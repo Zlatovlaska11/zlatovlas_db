@@ -2,6 +2,7 @@ pub mod pager {
 
     pub const PAGE_SIZE: usize = 4096; // 4 KB page size
 
+    #[derive(Debug)]
     pub struct Page {
         pub id: usize,
         pub data: [u8; PAGE_SIZE],

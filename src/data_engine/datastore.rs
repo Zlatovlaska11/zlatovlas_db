@@ -2,18 +2,22 @@ pub mod datastore {
     use std::{
         collections::HashMap,
         fs::File,
-        io::{Seek, Write},
+        io::{self, Read, Seek, Write},
+        os::unix::fs::FileExt,
+        u64,
     };
 
-    use crate::data_engine::page_allocator::pager::{self, Page, PageImpl};
+    use crate::data_engine::page_allocator::pager::{self, Page, PageImpl, PAGE_SIZE};
 
     pub struct DataStore {
         file: File,
-        pages: HashMap<usize, pager::Page>,
+        pub pages: HashMap<usize, pager::Page>,
         cur_id: usize,
     }
 
     pub trait DsTrait {
+        fn get_page_count(file_path: &str) -> io::Result<usize>;
+        fn from_file(filename: String) -> DataStore;
         fn write_into_page(
             &mut self,
             page_id: usize,
@@ -36,6 +40,40 @@ pub mod datastore {
                 pages: HashMap::new(),
                 cur_id: 0,
             }
+        }
+
+        fn get_page_count(file_path: &str) -> io::Result<usize> {
+            let file = File::open(file_path)?;
+            let file_size = file.metadata()?.len(); // Get file size in bytes
+            Ok((file_size as usize + PAGE_SIZE - 1) / PAGE_SIZE) // Round up to account for partial pages
+        }
+
+        fn from_file(filename: String) -> DataStore {
+            let mut data = File::open(&filename).expect("file does not exists");
+
+            let mut page: [u8; pager::PAGE_SIZE] = [0; pager::PAGE_SIZE];
+
+            data.read_at(&mut page, 0).unwrap();
+
+            let number_of_pages = DataStore::get_page_count(&filename).unwrap();
+
+            let mut datastore = DataStore {
+                file: data,
+                pages: HashMap::new(),
+                cur_id: 0,
+            };
+
+            for x in 0..number_of_pages {
+                datastore.allocate_page();
+                datastore.write_into_page(x, 0, &page).unwrap();
+
+                datastore
+                    .file
+                    .read_at(&mut page, (datastore.cur_id * pager::PAGE_SIZE) as u64)
+                    .unwrap();
+            }
+
+            datastore
         }
 
         fn flush_page(&mut self, page_id: usize) -> Result<(), String> {
