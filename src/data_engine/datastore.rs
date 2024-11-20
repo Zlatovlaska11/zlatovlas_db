@@ -1,4 +1,4 @@
-mod datastore {
+pub mod datastore {
     use std::{
         collections::HashMap,
         fs::File,
@@ -14,11 +14,17 @@ mod datastore {
     }
 
     pub trait DsTrait {
-        fn read_page(&mut self, page_id: usize) -> Result<[u8; pager::PAGE_SIZE], String>;
+        fn write_into_page(
+            &mut self,
+            page_id: usize,
+            offset: usize,
+            data: &[u8],
+        ) -> Result<(), String>;
+        fn read_page(&mut self, page_id: usize) -> Result<String, String>;
         fn new(filename: String) -> DataStore;
         fn flush_page(&mut self, page_id: usize) -> Result<(), String>;
         fn allocate_page(&mut self);
-        fn get_page(&mut self, page_id: usize) -> Result<&Page, String>;
+        fn get_page(&mut self, page_id: usize) -> Result<&mut Page, String>;
     }
 
     impl DsTrait for DataStore {
@@ -53,8 +59,8 @@ mod datastore {
             self.cur_id += 1;
         }
 
-        fn get_page(&mut self, page_id: usize) -> Result<&Page, String> {
-            let page = self.pages.get(&page_id);
+        fn get_page(&mut self, page_id: usize) -> Result<&mut Page, String> {
+            let page = self.pages.get_mut(&page_id);
 
             if page.is_none() {
                 return Err("page not found".to_string());
@@ -63,8 +69,23 @@ mod datastore {
             return Ok(page.unwrap());
         }
 
-        fn read_page(&mut self, page_id: usize) -> Result<[u8; pager::PAGE_SIZE], String> {
-            self.get_page(page_id)?.read()
+        fn read_page(&mut self, page_id: usize) -> Result<String, String> {
+            let data = self.get_page(page_id)?.read()?;
+            let data = String::from_utf8(data.to_vec());
+
+            if data.is_ok() {
+                Ok(data.unwrap())
+            } else {
+                return Err("Error converting".to_string());
+            }
+        }
+        fn write_into_page(
+            &mut self,
+            page_id: usize,
+            offset: usize,
+            data: &[u8],
+        ) -> Result<(), String> {
+            self.get_page(page_id)?.write(offset, data)
         }
     }
 }
