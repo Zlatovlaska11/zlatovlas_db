@@ -1,11 +1,12 @@
-pub mod datastore {
-    use std::{
+pub mod datastore { use std::{
         collections::HashMap,
         fs::File,
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
-        u64,
+        u64, usize,
     };
+
+    pub static MAX_PAGES: usize = 10;
 
     use crate::data_engine::page_allocator::pager::{self, Page, PageImpl, PAGE_SIZE};
 
@@ -15,9 +16,19 @@ pub mod datastore {
         cur_id: usize,
     }
 
+    struct LruCache {
+        usage_order: HashMap<usize, usize>,
+    }
+
+    impl LruCache {
+        fn new() -> Self {
+            Self {
+                usage_order: HashMap::new(),
+            }
+        }
+    }
+
     pub trait DsTrait {
-        fn evict_page(&mut self, page_id: usize) -> Result<(), String>;
-        fn change_file(&mut self, filename: String) -> io::Result<()>;
         fn get_page_count(file_path: &str) -> io::Result<usize>;
         fn from_file(filename: String) -> DataStore;
         fn write_into_page(
@@ -31,6 +42,9 @@ pub mod datastore {
         fn flush_page(&mut self, page_id: usize) -> Result<(), String>;
         fn allocate_page(&mut self);
         fn get_page(&mut self, page_id: usize) -> Result<&mut Page, String>;
+        fn evict_page(&mut self, page_id: usize) -> Result<(), String>;
+        fn change_file(&mut self, filename: String) -> io::Result<()>;
+        //fn add_page(&mut self, filename: String) -> io::Result<()>;
     }
 
     impl DsTrait for DataStore {
