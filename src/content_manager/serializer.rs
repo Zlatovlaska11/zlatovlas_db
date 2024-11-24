@@ -22,7 +22,11 @@ pub mod serializer {
 
         bytes.iter().for_each(|x| ser.push(*x));
 
-        header.table_name.bytes().into_iter().for_each(|x| ser.push(x));
+        header
+            .table_name
+            .bytes()
+            .into_iter()
+            .for_each(|x| ser.push(x));
 
         let bytes = header.rows.to_ne_bytes();
 
@@ -39,11 +43,25 @@ pub mod serializer {
                 data_layout::data_layout::Type::Float => 'f',
             };
 
-            let dt = data.data.as_slice();
+            if size == 't' {
+                let mut buffer: [u8; 64] = [0u8; 64];
 
-            ser.push(size as u8);
+                if data.data.len() > buffer.len() {
+                    panic!("not a text buffer as text");
+                }
 
-            dt.iter().for_each(|x| ser.push(*x));
+                for x in 0..data.data.len() {
+                    buffer[x] = data.data[x];
+                }
+                ser.push(size as u8);
+
+                buffer.iter().for_each(|x| ser.push(*x));
+            } else {
+                let dt = data.data.as_slice();
+                ser.push(size as u8);
+
+                dt.iter().for_each(|x| ser.push(*x));
+            }
         });
 
         ser
@@ -84,6 +102,17 @@ pub mod serializer {
             buffer[i] = free_space_ptr[i];
         }
 
+        // 81 is first type identifier 
+        // by the identifier count the next data type off set 
+        // ref. ./data_layout.md
+
+        println!("{}", String::from_utf8_lossy(&dta[81..]));
+        println!("{:?}", dta);
+
+        //println!("{:?}", String::from_utf8_lossy(&dta[81..81+64].to_vec()));
+
+        //println!("{}", len);
+
         let free_space_pt = u64::from_be_bytes(buffer);
 
         let page_header = PageHeader {
@@ -110,11 +139,11 @@ mod test {
 
         let dt = Data::new(
             crate::content_manager::data_layout::data_layout::Type::Text,
-            b"hello world".to_vec(),
+            &mut b"hello world".to_vec(),
         );
         let dt1 = Data::new(
             crate::content_manager::data_layout::data_layout::Type::Text,
-            b"my nigga bitch".to_vec(),
+            &mut b"my nigga bitch".to_vec(),
         );
 
         data.push(dt);
@@ -128,6 +157,6 @@ mod test {
 
         //println!("{}", String::from_utf8_lossy(&ser));
 
-        //deserializer(ser);
+        println!("{:?}", deserializer(ser));
     }
 }

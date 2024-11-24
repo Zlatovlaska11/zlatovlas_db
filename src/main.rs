@@ -22,6 +22,8 @@ fn main() {
 
 
     let deser = deserializer(ser);
+
+
     let tbl = vec![deser];
 
     let table = Table::new(tbl).to_owned();
