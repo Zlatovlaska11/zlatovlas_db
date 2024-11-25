@@ -1,6 +1,6 @@
 pub mod serializer {
 
-    use std::{fmt::write, io::Read};
+    use std::{fmt::write, io::Read, usize};
 
     use prettytable::{row, Table};
     use tabled::Tabled;
@@ -9,7 +9,7 @@ pub mod serializer {
         self,
         data_layout::{
             self,
-            data_layout::{PageData, PageHeader},
+            data_layout::{Data, PageData, PageHeader, Type},
         },
     };
 
@@ -65,17 +65,27 @@ pub mod serializer {
         });
 
         ser
-
-        // get size and than create aray of bytes to than convert to vec to than back to array and
-        // to write into page if the destined table
     }
 
     /// deserializes serialized data according to its byte structure
-    pub fn deserializer(data: Vec<u8>) -> PageHeader {
+    /// 81 bytes is the header
+    /// 1 byte for the type
+    /// and by the type of the data the next len is either 64 or 32
+    pub fn deserializer(data: Vec<u8>) -> PageData {
         let dta: &[u8] = &data;
-        let page_id = data[0];
+        let page_id = &data[0..8];
 
-        let tbl = &dta[1..65];
+        let mut buffer: [u8; 8] = [0; 8];
+
+        for i in 0..8 {
+            buffer[i] = page_id[i];
+        }
+
+        let page_id = buffer;
+
+        let page_id = usize::from_ne_bytes(page_id);
+
+        let tbl = &dta[8..65 + 8];
 
         let mut buffer: [u8; 64] = [0; 64];
 
@@ -85,7 +95,7 @@ pub mod serializer {
 
         let table_name = buffer;
 
-        let number_of_rows = &dta[65..73];
+        let number_of_rows = &dta[73..81];
 
         let mut buffer: [u8; 8] = [0; 8];
 
@@ -93,72 +103,92 @@ pub mod serializer {
             buffer[i] = number_of_rows[i];
         }
 
-        let number_of_rows = u64::from_be_bytes(buffer);
-
-        let free_space_ptr = &dta[73..81];
+        let free_space_ptr = &dta[80..88];
         let mut buffer: [u8; 8] = [0; 8];
 
         for i in 0..8 {
             buffer[i] = free_space_ptr[i];
         }
 
-        // 81 is first type identifier
-        // by the identifier count the next data type off set
-        // ref. ./data_layout.md
+        let data_packs = &dta[88..];
 
-        //println!("{}", String::from_utf8_lossy(&dta[81..]));
-        //println!("{:?}", dta);
-        println!("{:?}", dta[81..].to_vec());
+        let mut jump = 0;
 
-        let start = dta[81..]
-            .to_vec()
-            .iter()
-            .position(|r| *r == 't' as u8)
-            .unwrap();
+        if data_packs.len() < 90 {
+            let page_data = PageData::new(
+                String::from_utf8(table_name.to_vec()).unwrap(),
+                page_id,
+                Vec::new(),
+            );
 
-        let mut data = dta.to_vec();
+            return page_data;
+        }
 
-        data.reverse();
+        // later make a check that checks if there is acctually any data
+        let mut data = vec![parse_data(&dta[88..], &mut jump).unwrap()];
 
-        data.truncate(start);
-        
-        // finish this code get the start of the data and just by the type calc offset 
+        let mut dta = parse_data(&data_packs[jump + 1..], &mut jump);
 
-        println!("{}", start);
+        while dta.is_some() {
+            data.push(dta.unwrap());
+            dta = parse_data(&data_packs[jump..], &mut jump);
+        }
 
-        //println!("{:?}", String::from_utf8_lossy(&dta[81..81+64].to_vec()));
-
-        //println!("{}", len);
-
-        let free_space_pt = u64::from_be_bytes(buffer);
-
-        let page_header = PageHeader {
-            page_id: page_id as usize,
-            table_name: String::from_utf8_lossy(&table_name.to_vec()).to_string(),
-            rows: number_of_rows,
-            free_space_ptr: free_space_pt,
-        };
+        let page_header = PageData::new(
+            String::from_utf8(table_name.to_vec()).unwrap(),
+            page_id,
+            data,
+        );
 
         return page_header;
+    }
+
+    /// put only trimmed data not with header
+    fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
+        let tp = data[0] as char;
+
+        let mut tps: Type = Type::Text;
+
+        let jmp: usize = match tp {
+            't' => {
+                tps = Type::Text;
+                64
+            }
+            'n' => {
+                tps = Type::Number;
+                std::mem::size_of::<i32>()
+            }
+            'f' => {
+                tps = Type::Float;
+                std::mem::size_of::<f32>()
+            }
+
+            _ => usize::MAX,
+        };
+
+        if jmp == usize::MAX {
+            return None;
+        }
+
+        let data = &data[..jmp];
+
+        *jump += jmp;
+
+        Some(Data::new(tps, &mut data.to_vec()))
     }
 }
 
 mod test {
-    use crate::content_manager::data_layout::data_layout::Data;
-    use crate::content_manager::data_layout::data_layout::PageData;
-    use crate::content_manager::serializer::serializer::deserializer;
-
-    use super::serializer::serialize;
 
     #[test]
     fn serialization_test() {
         let mut data: Vec<crate::content_manager::data_layout::data_layout::Data> = Vec::new();
 
-        let dt = Data::new(
+        let dt = crate::content_manager::data_layout::data_layout::Data::new(
             crate::content_manager::data_layout::data_layout::Type::Text,
             &mut b"hello world".to_vec(),
         );
-        let dt1 = Data::new(
+        let dt1 = crate::content_manager::data_layout::data_layout::Data::new(
             crate::content_manager::data_layout::data_layout::Type::Text,
             &mut b"my nigga bitch".to_vec(),
         );
@@ -166,14 +196,16 @@ mod test {
         data.push(dt);
         data.push(dt1);
 
-        let page_data = PageData::new("test".to_string(), 1, data);
+        let page_data = crate::content_manager::data_layout::data_layout::PageData::new(
+            "test".to_string(),
+            1,
+            data,
+        );
 
-        let ser = serialize(page_data);
+        let ser = crate::content_manager::serializer::serializer::serialize(page_data);
 
-        //println!("{:?}", ser);
+        let deser = crate::content_manager::serializer::serializer::deserializer(ser);
 
-        //println!("{}", String::from_utf8_lossy(&ser));
-
-        println!("{:?}", deserializer(ser));
+        println!("{:?}", deser.data);
     }
 }

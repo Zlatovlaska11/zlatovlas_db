@@ -1,6 +1,9 @@
 pub mod data_layout {
+    use std::fmt;
+
     use tabled::Tabled;
 
+    #[derive(Debug)]
     pub enum Type {
         Number,
         Text,
@@ -18,12 +21,15 @@ pub mod data_layout {
         pub free_space_ptr: u64,
     }
 
+    #[derive(Debug)]
     pub struct Data {
         pub tp: Type,
 
         pub data: Vec<u8>,
     }
 
+
+    #[derive(Debug)]
     pub struct PageData {
         pub header: PageHeader,
         pub data: Vec<Data>,
