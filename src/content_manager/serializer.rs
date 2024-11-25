@@ -102,12 +102,29 @@ pub mod serializer {
             buffer[i] = free_space_ptr[i];
         }
 
-        // 81 is first type identifier 
-        // by the identifier count the next data type off set 
+        // 81 is first type identifier
+        // by the identifier count the next data type off set
         // ref. ./data_layout.md
 
-        println!("{}", String::from_utf8_lossy(&dta[81..]));
-        println!("{:?}", dta);
+        //println!("{}", String::from_utf8_lossy(&dta[81..]));
+        //println!("{:?}", dta);
+        println!("{:?}", dta[81..].to_vec());
+
+        let start = dta[81..]
+            .to_vec()
+            .iter()
+            .position(|r| *r == 't' as u8)
+            .unwrap();
+
+        let mut data = dta.to_vec();
+
+        data.reverse();
+
+        data.truncate(start);
+        
+        // finish this code get the start of the data and just by the type calc offset 
+
+        println!("{}", start);
 
         //println!("{:?}", String::from_utf8_lossy(&dta[81..81+64].to_vec()));
 
