@@ -1,9 +1,10 @@
 pub mod data_layout {
     use std::fmt;
 
+    use serde::{Deserialize, Serialize};
     use tabled::Tabled;
 
-    #[derive(Debug)]
+    #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
     pub enum Type {
         Number,
         Text,
@@ -21,13 +22,39 @@ pub mod data_layout {
         pub free_space_ptr: u64,
     }
 
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct TableMetadata {
+        pub pages: Vec<usize>,
+        pub table_layout: Vec<ColData>,
+    }
+
+    impl TableMetadata {
+        pub fn new(pages: Vec<usize>, table_layout: Vec<ColData>) -> Self {
+            Self {
+                pages,
+                table_layout,
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    pub struct ColData {
+        pub col_type: Type,
+        pub col_name: String,
+    }
+
+    impl ColData {
+        pub fn new(col_type: Type, col_name: String) -> Self {
+            Self { col_type, col_name }
+        }
+    }
+
     #[derive(Debug)]
     pub struct Data {
         pub tp: Type,
 
         pub data: Vec<u8>,
     }
-
 
     #[derive(Debug)]
     pub struct PageData {
@@ -56,8 +83,22 @@ pub mod data_layout {
 
     impl PageData {
         pub fn new(table_name: String, page_id: usize, data: Vec<Data>) -> Self {
+            let mut free_space_ptr = 88;
+            for dta in &data {
+                free_space_ptr += match dta.tp {
+                    Type::Number => std::mem::size_of::<i32>() + 1,
+                    Type::Text => 65,
+                    Type::Float => std::mem::size_of::<f32>() + 1,
+                };
+            }
+
+            // if no data hos been added than dont write to the header but rather to the data part
+            if free_space_ptr == 88 {
+                free_space_ptr += 1;
+            }
+
             Self {
-                header: PageHeader::new(table_name, page_id, data.len())
+                header: PageHeader::new(table_name, page_id, data.len(), free_space_ptr as u64)
                     .expect("something happened"),
                 data,
             }
@@ -65,7 +106,12 @@ pub mod data_layout {
     }
 
     impl PageHeader {
-        fn new(table_name: String, page_id: usize, number_of_rows: usize) -> Option<Self> {
+        pub fn new(
+            table_name: String,
+            page_id: usize,
+            number_of_rows: usize,
+            free_space_ptr: u64,
+        ) -> Option<Self> {
             let bytes = table_name.as_str().as_bytes();
 
             if bytes.len() > 64 {
@@ -82,8 +128,8 @@ pub mod data_layout {
             Some(Self {
                 page_id,
                 table_name: str,
-                rows: 70,
-                free_space_ptr: 74,
+                rows: number_of_rows as u64,
+                free_space_ptr,
             })
         }
     }

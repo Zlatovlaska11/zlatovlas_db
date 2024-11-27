@@ -1,33 +1,34 @@
-pub mod datastore { use std::{
+pub mod datastore {
+    extern crate bincode;
+    use bincode::deserialize;
+
+    use crate::{
+        content_manager::{
+            data_layout::data_layout::{PageData, TableMetadata},
+            serializer::{self, serializer::deserializer},
+        },
+        data_engine::page_allocator::pager::{self, Page, PageImpl, PAGE_SIZE},
+    };
+    use std::{
+        borrow::{Borrow, BorrowMut},
         collections::HashMap,
-        fs::File,
+        fs::{File, OpenOptions},
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
+        sync::{Arc, Mutex},
         u64, usize,
     };
 
     pub static MAX_PAGES: usize = 10;
 
-    use crate::data_engine::page_allocator::pager::{self, Page, PageImpl, PAGE_SIZE};
-
     pub struct DataStore {
         file: File,
         pub pages: HashMap<usize, pager::Page>,
+        pub master_table: HashMap<String, TableMetadata>,
         cur_id: usize,
     }
 
-    struct LruCache {
-        usage_order: HashMap<usize, usize>,
-    }
-
-    impl LruCache {
-        fn new() -> Self {
-            Self {
-                usage_order: HashMap::new(),
-            }
-        }
-    }
-
+    // remake this to trait only important things not the organs of this shit
     pub trait DsTrait {
         fn get_page_count(file_path: &str) -> io::Result<usize>;
         fn from_file(filename: String) -> DataStore;
@@ -52,6 +53,7 @@ pub mod datastore { use std::{
             let file = File::create(filename).expect("Failed to create file");
 
             DataStore {
+                master_table: HashMap::new(),
                 file,
                 pages: HashMap::new(),
                 cur_id: 0,
@@ -65,11 +67,10 @@ pub mod datastore { use std::{
         }
 
         fn from_file(filename: String) -> DataStore {
-            let data = File::open(&filename).expect("file does not exists");
-
+            let data = File::open(&filename).unwrap();
             let mut page: [u8; pager::PAGE_SIZE] = [0; pager::PAGE_SIZE];
 
-            data.read_at(&mut page, 0).unwrap();
+            data.read_exact_at(&mut page, 0).unwrap();
 
             let number_of_pages = DataStore::get_page_count(&filename).unwrap();
 
@@ -77,16 +78,54 @@ pub mod datastore { use std::{
                 file: data,
                 pages: HashMap::new(),
                 cur_id: 0,
+                master_table: HashMap::new(),
             };
+            let mut buffer: String = String::new();
+            let mut file = File::open("schemes.dat").unwrap();
+            file.read_to_string(&mut buffer).unwrap();
+
+            let table_metadata: Arc<Mutex<Vec<TableMetadata>>> = Arc::new(Mutex::new(
+                deserialize(&buffer.as_bytes())
+                    .unwrap_or(vec![(TableMetadata::new(vec![], vec![]))]),
+            ));
+
+            //println!("{}", number_of_pages);
 
             for x in 0..number_of_pages {
                 datastore.allocate_page();
                 datastore.write_into_page(x, 0, &page).unwrap();
 
+                if buffer.len() != 0 {
+                    let dta = serializer::serializer::deserializer(page.to_vec());
+
+                    //println!("{:?}", dta.header);
+                    let k = dta.header.table_name;
+
+                    if datastore.master_table.contains_key(&k) {
+                        datastore.master_table.get_mut(&k).unwrap().pages.push(x);
+                    } else {
+                        // load table
+
+                        datastore.master_table.insert(
+                            k,
+                            TableMetadata::new(
+                                vec![x],
+                                table_metadata
+                                    .lock()
+                                    .unwrap()
+                                    .get(x)
+                                    .expect("there is no table scheme")
+                                    .table_layout
+                                    .clone(),
+                            ),
+                        );
+                    }
+                }
+
                 datastore
                     .file
                     .read_at(&mut page, (datastore.cur_id * pager::PAGE_SIZE) as u64)
-                    .unwrap();
+                    .expect("this shit");
             }
 
             datastore
@@ -94,6 +133,10 @@ pub mod datastore { use std::{
 
         fn flush_page(&mut self, page_id: usize) -> Result<(), String> {
             let page = self.pages.get_mut(&page_id).expect("page not found");
+
+            if !page.modified {
+                return Ok(());
+            }
 
             self.file
                 .seek(std::io::SeekFrom::Start(
@@ -114,6 +157,7 @@ pub mod datastore { use std::{
         }
 
         fn get_page(&mut self, page_id: usize) -> Result<&mut Page, String> {
+            // not loading pages err
             let page = self.pages.get_mut(&page_id);
 
             if page.is_none() {
@@ -129,13 +173,9 @@ pub mod datastore { use std::{
 
         fn read_page(&mut self, page_id: usize) -> Result<String, String> {
             let data = self.get_page(page_id)?.read()?;
-            let data = String::from_utf8(data.to_vec());
+            let data = String::from_utf8_lossy(&data).to_string();
 
-            if data.is_ok() {
-                Ok(data.unwrap())
-            } else {
-                return Err("Error converting".to_string());
-            }
+            Ok(data)
         }
         fn write_into_page(
             &mut self,

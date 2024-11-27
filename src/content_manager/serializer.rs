@@ -1,16 +1,8 @@
 pub mod serializer {
 
-    use std::{fmt::write, io::Read, usize};
-
-    use prettytable::{row, Table};
-    use tabled::Tabled;
-
-    use crate::content_manager::{
+    use crate::content_manager::data_layout::{
         self,
-        data_layout::{
-            self,
-            data_layout::{Data, PageData, PageHeader, Type},
-        },
+        data_layout::{Data, PageData, Type},
     };
 
     pub fn serialize(page_data: PageData) -> Vec<u8> {
@@ -68,11 +60,12 @@ pub mod serializer {
     }
 
     /// deserializes serialized data according to its byte structure
-    /// 81 bytes is the header
-    /// 1 byte for the type
-    /// and by the type of the data the next len is either 64 or 32
+    /// 88 bytes is the header
+    /// 8 bytes for the type
+    /// and by the type of the data the next len is either 64 or 8
     pub fn deserializer(data: Vec<u8>) -> PageData {
         let dta: &[u8] = &data;
+
         let page_id = &data[0..8];
 
         let mut buffer: [u8; 8] = [0; 8];
@@ -95,64 +88,46 @@ pub mod serializer {
 
         let table_name = buffer;
 
-        let number_of_rows = &dta[73..81];
-
-        let mut buffer: [u8; 8] = [0; 8];
-
-        for i in 0..8 {
-            buffer[i] = number_of_rows[i];
-        }
-
-        let free_space_ptr = &dta[80..88];
-        let mut buffer: [u8; 8] = [0; 8];
-
-        for i in 0..8 {
-            buffer[i] = free_space_ptr[i];
-        }
-
         let data_packs = &dta[88..];
 
-        let mut jump = 0;
+        if !data_packs[0].is_ascii() {
+            return PageData::new(
+                String::from_utf8_lossy(&table_name).to_string(),
+                page_id,
+                vec![],
+            );
+        } else {
+            let mut jump = 0;
 
-        if data_packs.len() < 90 {
-            let page_data = PageData::new(
+            let mut data = vec![];
+
+            let mut dta = parse_data(&data_packs[88..], &mut jump);
+
+            while dta.is_some() {
+                data.push(dta.unwrap());
+                dta = parse_data(&data_packs[jump..], &mut jump);
+            }
+
+            return PageData::new(
                 String::from_utf8(table_name.to_vec()).unwrap(),
                 page_id,
-                Vec::new(),
+                data,
             );
-
-            return page_data;
         }
-
-        // later make a check that checks if there is acctually any data
-        let mut data = vec![parse_data(&dta[88..], &mut jump).unwrap()];
-
-        let mut dta = parse_data(&data_packs[jump + 1..], &mut jump);
-
-        while dta.is_some() {
-            data.push(dta.unwrap());
-            dta = parse_data(&data_packs[jump..], &mut jump);
-        }
-
-        let page_header = PageData::new(
-            String::from_utf8(table_name.to_vec()).unwrap(),
-            page_id,
-            data,
-        );
-
-        return page_header;
     }
 
     /// put only trimmed data not with header
     fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
         let tp = data[0] as char;
 
+        println!("{}", tp);
+
         let mut tps: Type = Type::Text;
 
         let jmp: usize = match tp {
             't' => {
                 tps = Type::Text;
-                64
+                64 + 1
             }
             'n' => {
                 tps = Type::Number;
@@ -202,10 +177,14 @@ mod test {
             data,
         );
 
+        let data = vec![0, 0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 218, 0, 0, 0, 0, 0, 0, 0, 116, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 116, 109, 121, 32, 110, 105, 103, 103, 97, 32, 98, 105, 116, 99, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
         let ser = crate::content_manager::serializer::serializer::serialize(page_data);
 
-        let deser = crate::content_manager::serializer::serializer::deserializer(ser);
+        println!("{:?}", ser[88] as char);
 
-        println!("{:?}", deser.data);
+        let deser = crate::content_manager::serializer::serializer::deserializer(data);
+
+        println!("{:?}", deser);
     }
 }
