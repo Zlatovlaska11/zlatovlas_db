@@ -17,7 +17,8 @@ fn main() {
 
     //println!("{:?}", data);
 
-    println!("{:?}", datastore.master_table.keys());
+    //println!("{:?}", datastore.master_table.keys());
 
-    println!("{:?}", deserializer(data.as_bytes().to_vec()));
+    println!("{:?}", data)
+
 }

@@ -90,7 +90,7 @@ pub mod serializer {
 
         let data_packs = &dta[88..];
 
-        if !data_packs[0].is_ascii() {
+        if !data_packs[0] as char == 't' {
             return PageData::new(
                 String::from_utf8_lossy(&table_name).to_string(),
                 page_id,
@@ -101,12 +101,16 @@ pub mod serializer {
 
             let mut data = vec![];
 
-            let mut dta = parse_data(&data_packs[88..], &mut jump);
+            //println!("{:?}", data_packs);
+
+            let mut dta = parse_data(&data_packs[0..], &mut jump);
 
             while dta.is_some() {
                 data.push(dta.unwrap());
                 dta = parse_data(&data_packs[jump..], &mut jump);
             }
+
+            //println!("{:?}", data);
 
             return PageData::new(
                 String::from_utf8(table_name.to_vec()).unwrap(),
@@ -119,8 +123,6 @@ pub mod serializer {
     /// put only trimmed data not with header
     fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
         let tp = data[0] as char;
-
-        println!("{}", tp);
 
         let mut tps: Type = Type::Text;
 
@@ -142,12 +144,17 @@ pub mod serializer {
         };
 
         if jmp == usize::MAX {
+            //println!("usize max");
             return None;
         }
 
         let data = &data[..jmp];
 
+        //println!("{:?}", data);
+
         *jump += jmp;
+
+        //println!("{:?}", data);
 
         Some(Data::new(tps, &mut data.to_vec()))
     }
@@ -177,14 +184,24 @@ mod test {
             data,
         );
 
-        let data = vec![0, 0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 218, 0, 0, 0, 0, 0, 0, 0, 116, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 116, 109, 121, 32, 110, 105, 103, 103, 97, 32, 98, 105, 116, 99, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let data = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 218, 0, 0,
+            0, 0, 0, 0, 0, 116, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 116, 109, 121, 32, 110,
+            105, 103, 103, 97, 32, 98, 105, 116, 99, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0,
+        ];
 
         let ser = crate::content_manager::serializer::serializer::serialize(page_data);
 
-        println!("{:?}", ser[88] as char);
+        //println!("{:?}", ser[88] as char);
 
         let deser = crate::content_manager::serializer::serializer::deserializer(data);
 
-        println!("{:?}", deser);
+        //println!("{:?}", deser);
     }
 }

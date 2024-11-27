@@ -5,7 +5,10 @@ pub mod datastore {
     use crate::{
         content_manager::{
             data_layout::data_layout::{PageData, TableMetadata},
-            serializer::{self, serializer::deserializer},
+            serializer::{
+                self,
+                serializer::{deserializer},
+            },
         },
         data_engine::page_allocator::pager::{self, Page, PageImpl, PAGE_SIZE},
     };
@@ -38,7 +41,7 @@ pub mod datastore {
             offset: usize,
             data: &[u8],
         ) -> Result<(), String>;
-        fn read_page(&mut self, page_id: usize) -> Result<String, String>;
+        fn read_page(&mut self, page_id: usize) -> Result<PageData, String>;
         fn new(filename: String) -> DataStore;
         fn flush_page(&mut self, page_id: usize) -> Result<(), String>;
         fn allocate_page(&mut self);
@@ -93,6 +96,7 @@ pub mod datastore {
 
             for x in 0..number_of_pages {
                 datastore.allocate_page();
+
                 datastore.write_into_page(x, 0, &page).unwrap();
 
                 if buffer.len() != 0 {
@@ -171,9 +175,9 @@ pub mod datastore {
             return Ok(page.unwrap());
         }
 
-        fn read_page(&mut self, page_id: usize) -> Result<String, String> {
+        fn read_page(&mut self, page_id: usize) -> Result<PageData, String> {
             let data = self.get_page(page_id)?.read()?;
-            let data = String::from_utf8_lossy(&data).to_string();
+            let data = deserializer(data.to_vec());
 
             Ok(data)
         }
