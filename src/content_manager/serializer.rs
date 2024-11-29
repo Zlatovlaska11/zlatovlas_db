@@ -59,6 +59,40 @@ pub mod serializer {
         ser
     }
 
+    pub fn serialize_data(data: Vec<Data>) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::new();
+
+        data.into_iter().for_each(|data| {
+            let size: char = match data.tp {
+                data_layout::data_layout::Type::Number => 'n',
+                data_layout::data_layout::Type::Text => 't',
+                data_layout::data_layout::Type::Float => 'f',
+            };
+
+            if size == 't' {
+                let mut buffer: [u8; 64] = [0u8; 64];
+
+                if data.data.len() > buffer.len() {
+                    panic!("not a text buffer as text");
+                }
+
+                for x in 0..data.data.len() {
+                    buffer[x] = data.data[x];
+                }
+                res.push(size as u8);
+
+                buffer.iter().for_each(|x| res.push(*x));
+            } else {
+                let dt = data.data.as_slice();
+                res.push(size as u8);
+
+                dt.iter().for_each(|x| res.push(*x));
+            }
+        });
+
+        res
+    }
+
     /// deserializes serialized data according to its byte structure
     /// 88 bytes is the header
     /// 8 bytes for the type
@@ -184,23 +218,11 @@ mod test {
             data,
         );
 
-        let data = vec![
-            0, 0, 0, 0, 0, 0, 0, 0, 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 218, 0, 0,
-            0, 0, 0, 0, 0, 116, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 116, 109, 121, 32, 110,
-            105, 103, 103, 97, 32, 98, 105, 116, 99, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-        ];
-
         let ser = crate::content_manager::serializer::serializer::serialize(page_data);
 
         //println!("{:?}", ser[88] as char);
 
-        let deser = crate::content_manager::serializer::serializer::deserializer(data);
+        //let deser = crate::content_manager::serializer::serializer::deserializer(data);
 
         //println!("{:?}", deser);
     }

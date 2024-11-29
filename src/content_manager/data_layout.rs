@@ -11,6 +11,16 @@ pub mod data_layout {
         Float,
     }
 
+    impl Type {
+        pub fn size(&self) -> usize {
+            match self {
+                Type::Number => 8,
+                Type::Text => 64,
+                Type::Float => 8,
+            }
+        }
+    }
+
     // data structure serealiation
     // | 4b type | data | 1b sep |
 
