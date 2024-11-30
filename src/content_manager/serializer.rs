@@ -97,6 +97,7 @@ pub mod serializer {
     /// 88 bytes is the header
     /// 8 bytes for the type
     /// and by the type of the data the next len is either 64 or 8
+
     pub fn deserializer(data: Vec<u8>) -> PageData {
         let dta: &[u8] = &data;
 
@@ -124,9 +125,9 @@ pub mod serializer {
 
         let data_packs = &dta[88..];
 
-        if !data_packs[0] as char == 't' {
+        if !data_packs[1] as char == 't' {
             return PageData::new(
-                String::from_utf8_lossy(&table_name).to_string(),
+                String::from_utf8(table_name.to_vec()).unwrap().to_string(),
                 page_id,
                 vec![],
             );
@@ -137,7 +138,7 @@ pub mod serializer {
 
             //println!("{:?}", data_packs);
 
-            let mut dta = parse_data(&data_packs[0..], &mut jump);
+            let mut dta = parse_data(&data_packs[1..], &mut jump);
 
             while dta.is_some() {
                 data.push(dta.unwrap());
@@ -146,15 +147,15 @@ pub mod serializer {
 
             //println!("{:?}", data);
 
-            return PageData::new(
-                String::from_utf8(table_name.to_vec()).unwrap(),
+            let pagedata = PageData::new(
+                String::from_utf8(table_name.to_vec()).unwrap().trim_end_matches("\0").to_string(),
                 page_id,
                 data,
             );
+
+            pagedata
         }
     }
-
-    /// put only trimmed data not with header
     fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
         let tp = data[0] as char;
 

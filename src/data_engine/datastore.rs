@@ -1,7 +1,5 @@
 pub mod datastore {
     extern crate bincode;
-    use bincode::deserialize;
-
     use crate::{
         content_manager::{
             data_layout::data_layout::{ColData, Data, PageData, TableMetadata},
@@ -17,7 +15,6 @@ pub mod datastore {
         fs::File,
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
-        sync::{Arc, Mutex},
         usize,
     };
 
@@ -51,63 +48,89 @@ pub mod datastore {
         }
 
         pub fn from_file(filename: String) -> DataStore {
-            let data = File::open(&filename).unwrap();
-            let mut page: [u8; pager::PAGE_SIZE] = [0; pager::PAGE_SIZE];
+            // Open the main data file in read-write mode.
+            let file = File::options()
+                .read(true)
+                .write(true)
+                .open(&filename)
+                .expect("Failed to open file");
 
-            data.read_exact_at(&mut page, 0).unwrap();
+            // Calculate the total number of pages in the file.
+            let number_of_pages = DataStore::get_page_count(&filename)
+                .expect("Failed to determine the number of pages in the file");
 
-            let number_of_pages = DataStore::get_page_count(&filename).unwrap();
-
+            // Initialize an empty DataStore.
             let mut datastore = DataStore {
-                file: data,
+                file,
                 pages: HashMap::new(),
                 cur_id: 0,
                 master_table: HashMap::new(),
             };
-            let mut buffer: String = String::new();
-            let mut file = File::open("schemes.dat").unwrap();
-            file.read_to_string(&mut buffer).unwrap();
 
-            let table_metadata: Arc<Mutex<Vec<TableMetadata>>> = Arc::new(Mutex::new(
-                deserialize(&buffer.as_bytes())
-                    .unwrap_or(vec![(TableMetadata::new(vec![], vec![]))]),
-            ));
+            // Load table metadata from "schemes.dat".
+            let mut table_metadata: Vec<_> = vec![];
+            if let Ok(mut metadata_file) = File::open("schemes.dat") {
+                let mut buffer = String::new();
+                metadata_file
+                    .read_to_string(&mut buffer)
+                    .expect("Failed to read table metadata");
 
-            //println!("{}", number_of_pages);
+                table_metadata = bincode::deserialize(buffer.as_bytes()).unwrap_or_default();
+            }
 
-            for x in 0..number_of_pages {
+            // cannot find in the hashmap due to the name problem with not striping the null
+            // characters shit ass bithch problem
+
+            // Iterate through all pages in the file.
+            for page_index in 0..number_of_pages {
+                // Allocate a new page in the DataStore.
                 datastore.allocate_page();
 
-                datastore.write_into_page(x, 0, &page).unwrap();
+                // Create a buffer to read the page data.
+                let mut page_data = [0u8; PAGE_SIZE];
 
-                if buffer.len() != 0 {
-                    let dta = serializer::serializer::deserializer(page.to_vec());
-
-                    let k = dta.header.table_name;
-
-                    if datastore.master_table.contains_key(&k) {
-                        datastore.master_table.get_mut(&k).unwrap().pages.push(x);
-                    } else {
-                        datastore.master_table.insert(
-                            k,
-                            TableMetadata::new(
-                                vec![x],
-                                table_metadata
-                                    .lock()
-                                    .unwrap()
-                                    .get(x)
-                                    .expect("there is no table scheme")
-                                    .table_layout
-                                    .clone(),
-                            ),
-                        );
-                    }
-                }
-
+                // Read the page data from the file.
                 datastore
                     .file
-                    .read_at(&mut page, (datastore.cur_id * pager::PAGE_SIZE) as u64)
-                    .expect("this shit");
+                    .read_exact_at(&mut page_data, (page_index * PAGE_SIZE) as u64)
+                    .expect("Failed to read page data");
+
+                // Deserialize the page header and table data.
+                let page_content = serializer::serializer::deserializer(page_data.to_vec());
+
+                // it didn't work because of this shit
+                // cmon mf
+                datastore
+                    .write_into_page(page_index, 0, &page_data)
+                    .unwrap();
+
+                // Update the master table with page references and metadata.
+                let table_name = &page_content.header.table_name;
+
+                if datastore.master_table.contains_key(table_name) {
+                    datastore
+                        .master_table
+                        .get_mut(table_name)
+                        .unwrap()
+                        .pages
+                        .push(page_index);
+                } else {
+                    let layout = table_metadata
+                        .get(page_index)
+                        .map(|metadata: &TableMetadata| metadata.table_layout.clone())
+                        .unwrap_or_else(Vec::new);
+
+                    let table_name =
+                        String::from_utf8(page_content.header.table_name.to_string().into())
+                            .unwrap()
+                            .trim_end_matches('\0')
+                            .to_string();
+
+                    datastore.master_table.insert(
+                        table_name.clone(),
+                        TableMetadata::new(vec![page_index], layout),
+                    );
+                }
             }
 
             datastore
@@ -144,8 +167,6 @@ pub mod datastore {
 
             if page.is_none() {
                 let mut page = Page::new(page_id);
-
-                println!("making new page");
 
                 self.file
                     .read_exact_at(&mut page.data, (page_id * pager::PAGE_SIZE) as u64)
@@ -194,11 +215,11 @@ pub mod datastore {
             }
         }
 
-        pub fn write(&mut self, table_name: String, data: Data) -> Result<(), ()> {
+        pub fn write(&mut self, table_name: String, data: Data) -> Result<(), String> {
             let pgd = self.master_table.get(&table_name);
 
             if pgd.is_none() {
-                return Err(());
+                return Err("no table found".to_string());
             }
 
             let pages = &pgd.unwrap().pages;
@@ -215,8 +236,7 @@ pub mod datastore {
 
                 let free_space = u64::from_ne_bytes(buffer);
 
-                if free_space as usize >= data.tp.size() + 1 {
-                    println!("{:?}", free_space);
+                if free_space as usize >= data.tp.size() {
                     free_space_ptr = free_space;
                     page_id = *x as i32;
                     break;
@@ -227,14 +247,28 @@ pub mod datastore {
             // !!!
             // really why
 
-            self.write_into_page(
-                page_id as usize,
-                free_space_ptr as usize,
-                &serialize_data(vec![data]).as_slice(),
-            )
-            .expect("error writing new data");
+            let ser_dta = serialize_data(vec![data]);
+
+            self.write_into_page(page_id as usize, free_space_ptr as usize, &ser_dta)
+                .expect("error writing");
+
+            self.update_free_space_ptr(page_id as usize, free_space_ptr as usize + 64);
 
             return Ok(());
+        }
+
+        fn update_free_space_ptr(&mut self, page_id: usize, new: usize) {
+            let data = &self.pages.get_mut(&page_id).unwrap().data;
+
+            let new = new.to_ne_bytes();
+
+            let mut buffer: [u8; 8] = [0u8; 8];
+
+            for x in 0..buffer.len() {
+                buffer[x] = new[x];
+            }
+
+            self.write_into_page(page_id, 80, &buffer).unwrap();
         }
 
         pub fn create_table(&mut self, table_name: String, table_layout: Vec<ColData>) {
@@ -251,6 +285,7 @@ pub mod datastore {
             self.write_into_page(id, 0, &serialize(header))
                 .expect("could not write to the page idk why");
 
+            println!("{}", table_name);
             self.master_table
                 .insert(table_name, TableMetadata::new(vec![id], table_layout));
         }
