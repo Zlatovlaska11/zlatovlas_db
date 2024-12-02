@@ -1,1 +1,6 @@
-# zlatovlas_db
+---
+icon: hand-wave
+---
+
+# zlatovlas\_db
+
