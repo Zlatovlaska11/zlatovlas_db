@@ -136,7 +136,7 @@ pub mod serializer {
 
             let mut data = vec![];
 
-            //println!("{:?}", data_packs);
+            println!("page -> {} -> {:?}", page_id, data_packs);
 
             let mut dta = parse_data(&data_packs[1..], &mut jump);
 
@@ -148,7 +148,10 @@ pub mod serializer {
             //println!("{:?}", data);
 
             let pagedata = PageData::new(
-                String::from_utf8(table_name.to_vec()).unwrap().trim_end_matches("\0").to_string(),
+                String::from_utf8(table_name.to_vec())
+                    .unwrap()
+                    .trim_end_matches("\0")
+                    .to_string(),
                 page_id,
                 data,
             );
@@ -158,6 +161,7 @@ pub mod serializer {
     }
     fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
         let tp = data[0] as char;
+        println!("type -> {}", tp);
 
         let mut tps: Type = Type::Text;
 

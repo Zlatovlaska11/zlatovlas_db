@@ -25,6 +25,7 @@ pub mod datastore {
         pub pages: HashMap<usize, pager::Page>,
         pub master_table: HashMap<String, TableMetadata>,
         cur_id: usize,
+        from_file: bool,
     }
 
     // remake this to trait only important things not the organs of this shit
@@ -34,6 +35,7 @@ pub mod datastore {
             let file = File::create(filename).expect("Failed to create file");
 
             DataStore {
+                from_file: false,
                 master_table: HashMap::new(),
                 file,
                 pages: HashMap::new(),
@@ -61,6 +63,7 @@ pub mod datastore {
 
             // Initialize an empty DataStore.
             let mut datastore = DataStore {
+                from_file: true,
                 file,
                 pages: HashMap::new(),
                 cur_id: 0,
@@ -237,7 +240,12 @@ pub mod datastore {
                 let free_space = u64::from_ne_bytes(buffer);
 
                 if free_space as usize >= data.tp.size() {
-                    free_space_ptr = free_space;
+                    free_space_ptr = if self.from_file {
+                        free_space + 1
+                    } else {
+                        free_space
+                    };
+                    println!("{}", free_space);
                     page_id = *x as i32;
                     break;
                 }
@@ -258,8 +266,6 @@ pub mod datastore {
         }
 
         fn update_free_space_ptr(&mut self, page_id: usize, new: usize) {
-            let data = &self.pages.get_mut(&page_id).unwrap().data;
-
             let new = new.to_ne_bytes();
 
             let mut buffer: [u8; 8] = [0u8; 8];

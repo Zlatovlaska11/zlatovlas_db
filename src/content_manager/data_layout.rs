@@ -1,4 +1,5 @@
 pub mod data_layout {
+
     use std::fmt;
 
     use serde::{Deserialize, Serialize};
@@ -72,6 +73,42 @@ pub mod data_layout {
         pub data: Vec<Data>,
     }
 
+    impl fmt::Display for PageData {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                f,
+                "id: {}, table name: {}, number of rows: {}, free space ptr: {}\n",
+                self.header.page_id,
+                self.header.table_name,
+                self.header.rows,
+                self.header.free_space_ptr,
+            )?;
+
+            write!(
+                f,
+                "[{}]",
+                self.data.iter().fold(String::new(), |acc, num| acc
+                    + &String::from_utf8(num.data.clone()).unwrap()
+                    + ", ")
+            )
+        }
+    }
+
+    impl fmt::Display for Data {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let tp = match self.tp {
+                Type::Number => "num",
+                Type::Text => "text",
+                Type::Float => "float",
+            };
+            write!(
+                f,
+                "tp -> {}, data -> {}",
+                tp,
+                String::from_utf8(self.data.clone()).unwrap()
+            )
+        }
+    }
     impl Data {
         pub fn new(tp: Type, data: &mut Vec<u8>) -> Self {
             let size = match tp {
