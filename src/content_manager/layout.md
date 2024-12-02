@@ -1,6 +1,8 @@
 # layout
 
-```markdown
+The data encoding format with binary approach useful when needing some piece of data which make's it a O(1) operation of just accessing the right index
+
+```
 +---------------------+
 | Page Header         |  <- Metadata (e.g., page ID, free space pointer)
 +---------------------+
@@ -30,5 +32,5 @@
 
 ```
 
-The data encoding format with binary approach useful when needing some piece of data which make's it a O(1) operation of just accessing the right index
+
 
