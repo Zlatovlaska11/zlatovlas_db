@@ -1,3 +1,6 @@
+# layout
+
+```markdown
 +---------------------+
 | Page Header         |  <- Metadata (e.g., page ID, free space pointer)
 +---------------------+
@@ -24,3 +27,8 @@
 +---------------------+
 | free space ptr      | : u64 -> 8b
 +---------------------+
+
+```
+
+The data encoding format with binary approach useful when needing some piece of data which make's it a O(1) operation of just accessing the right index
+
