@@ -139,7 +139,7 @@ pub mod datastore {
             datastore
         }
 
-        fn flush_page(&mut self, page_id: usize) -> Result<(), String> {
+        pub fn flush_page(&mut self, page_id: usize) -> Result<(), String> {
             let page = self.pages.get_mut(&page_id).expect("page not found");
 
             if !page.modified {
@@ -217,60 +217,47 @@ pub mod datastore {
                 self.flush_page(id).unwrap();
             }
         }
-
         pub fn write(&mut self, table_name: String, data: Data) -> Result<(), String> {
             let pgd = self.master_table.get(&table_name);
 
             if pgd.is_none() {
                 return Err("no table found".to_string());
             }
-
             let pages = &pgd.unwrap().pages;
 
-            let mut free_space_ptr = u64::MAX;
+            let mut free_spc = u64::MAX;
             let mut page_id = -1;
 
-            let mut buffer: [u8; 8] = [0u8; 8];
-
             for x in pages {
-                let bytes = &self.pages.get(x).unwrap().data[80..88];
+                let page_data = deserializer(self.pages.get(x).unwrap().data.to_vec());
 
-                buffer.copy_from_slice(bytes);
+                let free_space_ptr = page_data.header.free_space_ptr;
 
-                let free_space = u64::from_ne_bytes(buffer);
-
-                if PAGE_SIZE - free_space as usize >= data.tp.size() {
-                    free_space_ptr = if free_space == 89 {
-                        89
-                    } else if self.from_file {
-                        free_space + 1
-                    } else {
-                        free_space
-                    };
-                    println!("{}", free_space);
+                if PAGE_SIZE - free_space_ptr as usize >= data.tp.size() {
+                    free_spc = free_space_ptr;
                     page_id = *x as i32;
                     break;
                 }
             }
 
-            // not writing new data into table
-            // !!!
-            // really why
+            // need to change this because if the write fails this will corupt the pointer
 
-            let ser_dta = serialize_data(vec![data]);
+            self.update_free_space_ptr(
+                page_id as usize,
+                free_spc as usize + data.tp.size() + 1 as usize,
+            );
 
-            self.write_into_page(page_id as usize, free_space_ptr as usize, &ser_dta)
-                .expect("error writing");
+            self.write_into_page(
+                page_id as usize,
+                free_spc as usize,
+                &serialize_data(vec![data]),
+            )
+            .map_err(|e| e.to_string())?;
 
-            self.update_free_space_ptr(page_id as usize, free_space_ptr as usize + 64);
-
-            return Ok(());
+            Ok(())
         }
 
         fn update_free_space_ptr(&mut self, page_id: usize, new: usize) {
-            if new == 217 {
-                self.from_file = true;
-            }
             let new = new.to_ne_bytes();
 
             let mut buffer: [u8; 8] = [0u8; 8];
@@ -296,7 +283,6 @@ pub mod datastore {
             self.write_into_page(id, 0, &serialize(header))
                 .expect("could not write to the page idk why");
 
-            println!("{}", table_name);
             self.master_table
                 .insert(table_name, TableMetadata::new(vec![id], table_layout));
         }

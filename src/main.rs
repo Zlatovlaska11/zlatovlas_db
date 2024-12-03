@@ -8,7 +8,7 @@ fn main() {
         data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
 
     // datastore.create_table(
-    //     "test".to_string(),
+    //     "users".to_string(),
     //     vec![ColData::new(Type::Text, "username".to_string())],
     // );
     // datastore
@@ -20,24 +20,24 @@ fn main() {
     //         ),
     //     )
     //     .unwrap();
-
-    datastore
-        .write(
-            "test".to_string(),
-            content_manager::data_layout::data_layout::Data::new(
-                Type::Text,
-                &mut "bruh3".as_bytes().to_vec(),
-            ),
-        )
-        .unwrap();
-
-    datastore
-        .write(
-            "test".to_string(),
-            Data::new(Type::Text, &mut "helo kello".as_bytes().to_vec()),
-        )
-        .unwrap();
-
+    //
+    // datastore
+    //     .write(
+    //         "test".to_string(),
+    //         content_manager::data_layout::data_layout::Data::new(
+    //             Type::Text,
+    //             &mut "bruh3".as_bytes().to_vec(),
+    //         ),
+    //     )
+    //     .unwrap();
+    //
+    // datastore
+    //     .write(
+    //         "test".to_string(),
+    //         Data::new(Type::Text, &mut "helo kello".as_bytes().to_vec()),
+    //     )
+    //     .unwrap();
+    //
     // datastore.write_into_page(1, 153, b"thello there").unwrap();
     let data = datastore.read_page(0).unwrap();
     println!("{}", data);

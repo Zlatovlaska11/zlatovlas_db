@@ -60,7 +60,7 @@ pub mod data_layout {
         }
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Data {
         pub tp: Type,
 
