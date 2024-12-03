@@ -101,6 +101,8 @@ pub mod serializer {
     pub fn deserializer(data: Vec<u8>) -> PageData {
         let dta: &[u8] = &data;
 
+        println!("{:?}", dta[281..300].to_vec());
+
         let page_id = &data[0..8];
 
         let mut buffer: [u8; 8] = [0; 8];
@@ -161,7 +163,7 @@ pub mod serializer {
     }
     fn parse_data(data: &[u8], jump: &mut usize) -> Option<Data> {
         let tp = data[0] as char;
-        println!("type -> {}", tp);
+        //println!("type -> {}", tp);
 
         let mut tps: Type = Type::Text;
 

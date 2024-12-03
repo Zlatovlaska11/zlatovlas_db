@@ -239,8 +239,12 @@ pub mod datastore {
 
                 let free_space = u64::from_ne_bytes(buffer);
 
-                if free_space as usize >= data.tp.size() {
-                    free_space_ptr = if self.from_file {
+                if PAGE_SIZE - free_space as usize >= data.tp.size() {
+                    free_space_ptr = if free_space == 89 {
+
+                        89
+                    }
+                    else if self.from_file {
                         free_space + 1
                     } else {
                         free_space
@@ -266,6 +270,9 @@ pub mod datastore {
         }
 
         fn update_free_space_ptr(&mut self, page_id: usize, new: usize) {
+            if new == 217 {
+                self.from_file = true;
+            }
             let new = new.to_ne_bytes();
 
             let mut buffer: [u8; 8] = [0u8; 8];
