@@ -1,8 +1,6 @@
-use content_manager::data_layout::data_layout::{ColData, Data, Type};
-use tabled::{builder::Builder, settings::Style};
-
 pub mod content_manager;
 pub mod data_engine;
+
 fn main() {
     let mut datastore =
         data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
