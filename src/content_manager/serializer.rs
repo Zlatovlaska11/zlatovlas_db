@@ -101,8 +101,6 @@ pub mod serializer {
     pub fn deserializer(data: Vec<u8>) -> PageData {
         let dta: &[u8] = &data;
 
-        println!("{:?}", dta[281..300].to_vec());
-
         let page_id = &data[0..8];
 
         let mut buffer: [u8; 8] = [0; 8];
@@ -137,8 +135,6 @@ pub mod serializer {
             let mut jump = 0;
 
             let mut data = vec![];
-
-            println!("page -> {} -> {:?}", page_id, data_packs);
 
             let mut dta = parse_data(&data_packs[1..], &mut jump);
 

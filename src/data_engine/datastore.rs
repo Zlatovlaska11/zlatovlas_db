@@ -241,10 +241,8 @@ pub mod datastore {
 
                 if PAGE_SIZE - free_space as usize >= data.tp.size() {
                     free_space_ptr = if free_space == 89 {
-
                         89
-                    }
-                    else if self.from_file {
+                    } else if self.from_file {
                         free_space + 1
                     } else {
                         free_space
