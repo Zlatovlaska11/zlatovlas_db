@@ -1,9 +1,54 @@
 pub mod content_manager;
 pub mod data_engine;
+pub mod server;
 
-fn main() {
-    let mut datastore =
-        data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
+use std::{
+    net::IpAddr,
+    sync::{Arc, Mutex},
+};
+
+use clap::Parser;
+use data_engine::datastore::datastore::DataStore;
+use once_cell::sync::{Lazy, OnceCell};
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// file name of the database
+    file: Option<String>,
+    // ip addres of ws/http server
+    //ip: Option<IpAddr>,
+}
+
+pub static DataStore: OnceCell<Arc<Mutex<DataStore>>> = OnceCell::new();
+
+fn init_args() {
+    let args = Args::parse();
+
+    if args.file.is_none() {
+        DataStore
+            .set(Arc::new(Mutex::new(DataStore::new(
+                "./database.db".to_string(),
+            ))))
+            .unwrap();
+    } else {
+        DataStore
+            .set(Arc::new(Mutex::new(DataStore::new(
+                "./database.db".to_string(),
+            ))))
+            .unwrap();
+    }
+}
+
+#[tokio::main]
+async fn main() {
+
+    init_args();
+
+    server::ws_server::ws_router().await;
+
+    // let mut datastore =
+    //     data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
 
     // datastore.create_table(
     //     "users".to_string(),
@@ -37,7 +82,26 @@ fn main() {
     //     .unwrap();
     //
     // datastore.write_into_page(1, 153, b"thello there").unwrap();
-    let data = datastore.read_page(0).unwrap();
-    println!("{}", data);
-    datastore.shutdown();
+    //     let data = datastore.read_page(0).unwrap();
+    //     println!("{}", data);
+    //     datastore.shutdown();
 }
+
+// use warp::Filter;
+// use tokio::sync::mpsc;
+// use futures::{StreamExt, SinkExt};
+//
+// #[tokio::main]
+// async fn main() {
+//     // Define the WebSocket route
+//     let ws_route = warp::path("ws")
+//         .and(warp::ws())
+//         .map(|ws: warp::ws::Ws| {
+//             ws.on_upgrade(handle_connection)
+//         });
+//
+//     // Run the server on localhost:3030
+//     println!("WebSocket server is running at ws://127.0.0.1:3030/ws");
+//     warp::serve(ws_route).run(([127, 0, 0, 1], 3030)).await;
+// }
+//

@@ -20,12 +20,12 @@ pub mod datastore {
 
     pub static MAX_PAGES: usize = 10;
 
+    #[derive(Debug)]
     pub struct DataStore {
         file: File,
         pub pages: HashMap<usize, pager::Page>,
         pub master_table: HashMap<String, TableMetadata>,
         cur_id: usize,
-        from_file: bool,
     }
 
     // remake this to trait only important things not the organs of this shit
@@ -35,7 +35,6 @@ pub mod datastore {
             let file = File::create(filename).expect("Failed to create file");
 
             DataStore {
-                from_file: false,
                 master_table: HashMap::new(),
                 file,
                 pages: HashMap::new(),
@@ -63,7 +62,6 @@ pub mod datastore {
 
             // Initialize an empty DataStore.
             let mut datastore = DataStore {
-                from_file: true,
                 file,
                 pages: HashMap::new(),
                 cur_id: 0,
