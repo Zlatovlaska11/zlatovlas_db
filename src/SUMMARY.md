@@ -1,7 +1,9 @@
 # Table of contents
 
-* [zlatovlas\_db](README.md)
-* [src](src/README.md)
-  * [content\_manager](src/content_manager/README.md)
-    * [layout](src/content_manager/layout.md)
-  * [data\_engine](src/data_engine.md)
+* [Zlatovlas DB](README.md)
+* [src](<README (1).md>)
+  * [content\_manager](content_manager/README.md)
+    * [layout](content_manager/layout.md)
+  * [data\_engine](data_engine.md)
+  * [Server](src/server/README.md)
+    * [ws\_server](src/server/ws_server.md)
