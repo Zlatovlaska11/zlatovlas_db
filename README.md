@@ -1,10 +1,24 @@
 ---
 icon: hand-wave
 cover: >-
-  ../.gitbook/assets/DALL·E 2024-12-02 11.40.44 - A visually striking cover
-  image for a GitHub repository named 'Zlatovlas DB,' a high-performance
-  database written in Rust. The design features a sleek.webp
+  .gitbook/assets/DALL·E 2024-12-02 11.40.44 - A visually striking cover image
+  for a GitHub repository named 'Zlatovlas DB,' a high-performance database
+  written in Rust. The design features a sleek.webp
 coverY: 65.96267837541163
+layout:
+  cover:
+    visible: true
+    size: full
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: true
 ---
 
 # Zlatovlas DB
