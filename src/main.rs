@@ -1,21 +1,23 @@
 pub mod content_manager;
 pub mod data_engine;
 pub mod server;
+pub mod parser;
 
 use std::{
-    net::IpAddr,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 use clap::Parser;
 use data_engine::datastore::datastore::DataStore;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     /// file name of the database
-    file: Option<String>,
+    #[arg(short, long, value_name = "FILE")]
+    file: Option<PathBuf>,
     // ip addres of ws/http server
     //ip: Option<IpAddr>,
 }
@@ -32,8 +34,9 @@ fn init_args() {
             ))))
             .unwrap();
     } else {
+        println!("database atached");
         DataStore
-            .set(Arc::new(Mutex::new(DataStore::new(
+            .set(Arc::new(Mutex::new(DataStore::from_file(
                 "./database.db".to_string(),
             ))))
             .unwrap();
@@ -42,7 +45,6 @@ fn init_args() {
 
 #[tokio::main]
 async fn main() {
-
     init_args();
 
     server::ws_server::ws_router().await;
@@ -51,7 +53,7 @@ async fn main() {
     //     data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
 
     // datastore.create_table(
-    //     "users".to_string(),
+    //     "test".to_string(),
     //     vec![ColData::new(Type::Text, "username".to_string())],
     // );
     // datastore
@@ -63,13 +65,13 @@ async fn main() {
     //         ),
     //     )
     //     .unwrap();
-    //
+
     // datastore
     //     .write(
     //         "test".to_string(),
     //         content_manager::data_layout::data_layout::Data::new(
     //             Type::Text,
-    //             &mut "bruh3".as_bytes().to_vec(),
+    //             &mut "bruh2".as_bytes().to_vec(),
     //         ),
     //     )
     //     .unwrap();
@@ -77,14 +79,14 @@ async fn main() {
     // datastore
     //     .write(
     //         "test".to_string(),
-    //         Data::new(Type::Text, &mut "helo kello".as_bytes().to_vec()),
+    //         Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
     //     )
     //     .unwrap();
-    //
-    // datastore.write_into_page(1, 153, b"thello there").unwrap();
-    //     let data = datastore.read_page(0).unwrap();
-    //     println!("{}", data);
-    //     datastore.shutdown();
+
+    //datastore.write_into_page(1, 153, b"thello there").unwrap();
+    // let data = datastore.read_page(0).unwrap();
+    // println!("{}", data);
+    // datastore.shutdown();
 }
 
 // use warp::Filter;

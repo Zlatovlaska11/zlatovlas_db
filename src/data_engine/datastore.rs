@@ -1,5 +1,7 @@
 pub mod datastore {
     extern crate bincode;
+    use prettytable::{row, Cell, Row, Table};
+
     use crate::{
         content_manager::{
             data_layout::data_layout::{ColData, Data, PageData, TableMetadata},
@@ -17,8 +19,6 @@ pub mod datastore {
         os::unix::fs::FileExt,
         usize,
     };
-
-    pub static MAX_PAGES: usize = 10;
 
     #[derive(Debug)]
     pub struct DataStore {
@@ -135,6 +135,36 @@ pub mod datastore {
             }
 
             datastore
+        }
+
+        pub fn table_print(&mut self, table_name: String) -> String {
+            let mut table = Table::new();
+
+            table.add_row(
+                self.master_table
+                    .get(&table_name)
+                    .unwrap()
+                    .table_layout
+                    .iter()
+                    .map(|x| x.col_name.clone())
+                    .collect(),
+            );
+
+
+            for x in self.master_table.get(&table_name).unwrap().pages.clone() {
+                let page = self.get_page(x).unwrap();
+
+                let data = deserializer(page.data.to_vec());
+
+                for data in data.data {
+                    table.add_row(Row::new(vec![Cell::new(
+                        &String::from_utf8(data.data).unwrap(),
+                    )]));
+                }
+            }
+
+            table.printstd();
+            table.to_string()
         }
 
         pub fn flush_page(&mut self, page_id: usize) -> Result<(), String> {
