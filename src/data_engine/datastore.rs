@@ -150,7 +150,6 @@ pub mod datastore {
                     .collect(),
             );
 
-
             for x in self.master_table.get(&table_name).unwrap().pages.clone() {
                 let page = self.get_page(x).unwrap();
 

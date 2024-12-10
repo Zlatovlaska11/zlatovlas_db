@@ -1,3 +1,4 @@
+#![feature(test)]
 pub mod content_manager;
 pub mod data_engine;
 pub mod server;
