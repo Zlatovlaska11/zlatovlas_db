@@ -1,5 +1,6 @@
 pub mod data_layout {
 
+    use core::panic;
     use std::fmt;
 
     use serde::{Deserialize, Serialize};
@@ -10,6 +11,7 @@ pub mod data_layout {
         Number,
         Text,
         Float,
+        None,
     }
 
     impl Type {
@@ -18,6 +20,7 @@ pub mod data_layout {
                 Type::Number => 8,
                 Type::Text => 64,
                 Type::Float => 8,
+                Type::None => panic!("bruh"),
             }
         }
     }
@@ -103,6 +106,7 @@ pub mod data_layout {
                 Type::Number => "num",
                 Type::Text => "text",
                 Type::Float => "float",
+                Type::None => "null",
             };
             write!(
                 f,
@@ -118,6 +122,7 @@ pub mod data_layout {
                 Type::Number => std::mem::size_of::<i32>(),
                 Type::Text => 64,
                 Type::Float => std::mem::size_of::<f32>(),
+                Type::None => 0,
             };
 
             if data.len() != size {
@@ -140,6 +145,7 @@ pub mod data_layout {
                         Type::Number => std::mem::size_of::<i32>() + 1,
                         Type::Text => 65,
                         Type::Float => std::mem::size_of::<f32>() + 1,
+                        Type::None => 0,
                     };
                 }
             }

@@ -138,7 +138,11 @@ pub mod datastore {
             datastore
         }
 
-        pub fn table_print(&mut self, table_name: String) -> String {
+        //TODO: this needs to be finished to filter with the instructions bellow
+        pub fn table_print(&mut self, table_name: String /*filter: Option<F>*/) -> String
+        // where
+        //     F: Fn(Vec<Data>) -> bool,
+        {
             let mut table = Table::new();
 
             table.add_row(
@@ -157,6 +161,14 @@ pub mod datastore {
                 let data = deserializer(page.data.to_vec(), &self);
 
                 let mut row: Vec<Cell> = Vec::new();
+
+                // by the table layout and the column in the filter index the inner vec and make
+                // the filter for this
+
+                // if filter.is_some() {
+                //
+                //     filter here
+                // }
 
                 for x in data.data {
                     for data in x {
@@ -253,6 +265,13 @@ pub mod datastore {
 
         pub fn write(&mut self, table_name: String, data: Vec<Data>) -> Result<(), String> {
             let pgd = self.master_table.get(&table_name);
+
+            // the row len works only with text by counting the vec of the layout
+            let layout_len = self.master_table.get(&table_name).unwrap().row_len;
+
+            let free: Vec<Data> = Vec::new();
+
+            if data.len() != layout_len {}
 
             if pgd.is_none() {
                 return Err("no table found".to_string());

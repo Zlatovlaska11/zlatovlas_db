@@ -70,10 +70,7 @@ async fn main() {
     datastore
         .write(
             "test".to_string(),
-            vec![
-                Data::new(Type::Text, &mut "bruh2".as_bytes().to_vec()),
-                Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec()),
-            ],
+            vec![Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec())],
         )
         .unwrap();
 
