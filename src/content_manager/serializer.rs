@@ -1,59 +1,30 @@
 pub mod serializer {
 
-    use crate::content_manager::data_layout::{
-        self,
-        data_layout::{Data, PageData, Type},
+    use crate::{
+        content_manager::data_layout::{
+            self,
+            data_layout::{Data, PageData, Type},
+        },
+        DataStore,
     };
 
     pub fn serialize(page_data: PageData) -> Vec<u8> {
         let mut ser: Vec<u8> = Vec::new();
 
+        // Serialize header (as before)
         let header = page_data.header;
 
-        let bytes = header.page_id.to_ne_bytes();
+        ser.extend_from_slice(&header.page_id.to_ne_bytes());
+        ser.extend(header.table_name.bytes());
+        ser.extend_from_slice(&header.rows.to_ne_bytes());
+        ser.extend_from_slice(&header.free_space_ptr.to_ne_bytes());
 
-        bytes.iter().for_each(|x| ser.push(*x));
-
-        header
-            .table_name
-            .bytes()
-            .into_iter()
-            .for_each(|x| ser.push(x));
-
-        let bytes = header.rows.to_ne_bytes();
-
-        bytes.iter().for_each(|x| ser.push(*x));
-
-        let bytes = header.free_space_ptr.to_ne_bytes();
-
-        bytes.iter().for_each(|x| ser.push(*x));
-
-        page_data.data.into_iter().for_each(|data| {
-            let size: char = match data.tp {
-                data_layout::data_layout::Type::Number => 'n',
-                data_layout::data_layout::Type::Text => 't',
-                data_layout::data_layout::Type::Float => 'f',
-            };
-
-            if size == 't' {
-                let mut buffer: [u8; 64] = [0u8; 64];
-
-                if data.data.len() > buffer.len() {
-                    panic!("not a text buffer as text");
-                }
-
-                for x in 0..data.data.len() {
-                    buffer[x] = data.data[x];
-                }
-                ser.push(size as u8);
-
-                buffer.iter().for_each(|x| ser.push(*x));
-            } else {
-                let dt = data.data.as_slice();
-                ser.push(size as u8);
-
-                dt.iter().for_each(|x| ser.push(*x));
-            }
+        // Serialize each row (Vec<Data>) with length prefix
+        page_data.data.into_iter().for_each(|row| {
+            let row_data = serialize_data(row); // Serialize individual row
+            let row_length = row_data.len() as u32;
+            ser.extend_from_slice(&row_length.to_ne_bytes()); // Prefix row length
+            ser.extend(row_data); // Add serialized row data
         });
 
         ser
@@ -98,7 +69,7 @@ pub mod serializer {
     /// 8 bytes for the type
     /// and by the type of the data the next len is either 64 or 8
 
-    pub fn deserializer(data: Vec<u8>) -> PageData {
+    pub fn deserializer(data: Vec<u8>, dts: &DataStore) -> PageData {
         let dta: &[u8] = &data;
 
         let page_id = &data[0..8];
@@ -124,23 +95,33 @@ pub mod serializer {
         let table_name = buffer;
 
         let data_packs = &dta[88..];
+        let tbl_name = String::from_utf8(table_name.to_vec()).unwrap().to_string();
+
+        let x = dts.master_table.get("test").unwrap().row_len;
+
+        //println!("test");
+
+        let in_one_row = x;
 
         if !data_packs[1] as char == 't' {
-            return PageData::new(
-                String::from_utf8(table_name.to_vec()).unwrap().to_string(),
-                page_id,
-                vec![],
-            );
+            return PageData::new(tbl_name, page_id, vec![]);
         } else {
             let mut jump = 0;
 
-            let mut data = vec![];
+            let mut data: Vec<Vec<Data>> = Vec::new();
 
             let mut dta = parse_data(&data_packs[1..], &mut jump);
 
+            // multiple clones idk why
+
             while dta.is_some() {
-                data.push(dta.unwrap());
-                dta = parse_data(&data_packs[jump..], &mut jump);
+                let mut buffer: Vec<Data> = Vec::new();
+                while buffer.len() < in_one_row  && dta.is_some(){
+                    buffer.push(dta.unwrap());
+                    dta = parse_data(&data_packs[jump..], &mut jump);
+                }
+                data.push(buffer.clone());
+                buffer.clear();
             }
 
             //println!("{:?}", data);
@@ -218,7 +199,7 @@ mod test {
         let page_data = crate::content_manager::data_layout::data_layout::PageData::new(
             "test".to_string(),
             1,
-            data,
+            vec![data],
         );
 
         let ser = crate::content_manager::serializer::serializer::serialize(page_data);

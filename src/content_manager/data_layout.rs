@@ -37,12 +37,14 @@ pub mod data_layout {
     pub struct TableMetadata {
         pub pages: Vec<usize>,
         pub table_layout: Vec<ColData>,
+        pub row_len: usize,
     }
 
     impl TableMetadata {
         pub fn new(pages: Vec<usize>, table_layout: Vec<ColData>) -> Self {
             Self {
                 pages,
+                row_len: table_layout.len(),
                 table_layout,
             }
         }
@@ -70,7 +72,7 @@ pub mod data_layout {
     #[derive(Debug)]
     pub struct PageData {
         pub header: PageHeader,
-        pub data: Vec<Data>,
+        pub data: Vec<Vec<Data>>,
     }
 
     impl fmt::Display for PageData {
@@ -83,14 +85,15 @@ pub mod data_layout {
                 self.header.rows,
                 self.header.free_space_ptr,
             )?;
-
-            write!(
-                f,
-                "[{}]",
-                self.data.iter().fold(String::new(), |acc, num| acc
-                    + &String::from_utf8(num.data.clone()).unwrap()
-                    + ", ")
-            )
+            Ok(for x in self.data.clone() {
+                write!(
+                    f,
+                    "[{}]",
+                    x.iter().fold(String::new(), |acc, num| acc
+                        + &String::from_utf8(num.data.clone()).unwrap()
+                        + ", ")
+                )?
+            })
         }
     }
 
@@ -129,14 +132,16 @@ pub mod data_layout {
     }
 
     impl PageData {
-        pub fn new(table_name: String, page_id: usize, data: Vec<Data>) -> Self {
+        pub fn new(table_name: String, page_id: usize, data: Vec<Vec<Data>>) -> Self {
             let mut free_space_ptr = 88;
-            for dta in &data {
-                free_space_ptr += match dta.tp {
-                    Type::Number => std::mem::size_of::<i32>() + 1,
-                    Type::Text => 65,
-                    Type::Float => std::mem::size_of::<f32>() + 1,
-                };
+            for x in &data {
+                for dta in x {
+                    free_space_ptr += match dta.tp {
+                        Type::Number => std::mem::size_of::<i32>() + 1,
+                        Type::Text => 65,
+                        Type::Float => std::mem::size_of::<f32>() + 1,
+                    };
+                }
             }
 
             // if no data hos been added than dont write to the header but rather to the data part
