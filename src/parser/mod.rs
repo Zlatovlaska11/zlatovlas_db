@@ -1,3 +1,5 @@
+pub mod executor;
+
 use std::{
     error::Error,
     fmt,

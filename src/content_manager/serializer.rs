@@ -38,6 +38,7 @@ pub mod serializer {
                 data_layout::data_layout::Type::Number => 'n',
                 data_layout::data_layout::Type::Text => 't',
                 data_layout::data_layout::Type::Float => 'f',
+                Type::None => '0',
             };
 
             if size == 't' {
@@ -116,7 +117,7 @@ pub mod serializer {
 
             while dta.is_some() {
                 let mut buffer: Vec<Data> = Vec::new();
-                while buffer.len() < in_one_row  && dta.is_some(){
+                while buffer.len() < in_one_row && dta.is_some() {
                     buffer.push(dta.unwrap());
                     dta = parse_data(&data_packs[jump..], &mut jump);
                 }
