@@ -97,7 +97,8 @@ pub mod datastore {
                     .expect("Failed to read page data");
 
                 // Deserialize the page header and table data.
-                let page_content = serializer::serializer::deserializer(page_data.to_vec());
+                let page_content =
+                    serializer::serializer::deserializer(page_data.to_vec(), &datastore);
 
                 // it didn't work because of this shit
                 // cmon mf
@@ -153,12 +154,17 @@ pub mod datastore {
             for x in self.master_table.get(&table_name).unwrap().pages.clone() {
                 let page = self.get_page(x).unwrap();
 
-                let data = deserializer(page.data.to_vec());
+                let data = deserializer(page.data.to_vec(), &self);
 
-                for data in data.data {
-                    table.add_row(Row::new(vec![Cell::new(
-                        &String::from_utf8(data.data).unwrap(),
-                    )]));
+                let mut row: Vec<Cell> = Vec::new();
+
+                for x in data.data {
+                    for data in x {
+                        row.push(Cell::new(&String::from_utf8(data.data).unwrap()));
+                    }
+
+                    table.add_row(row.clone().into());
+                    row.clear();
                 }
             }
 
@@ -208,7 +214,7 @@ pub mod datastore {
 
         pub fn read_page(&mut self, page_id: usize) -> Result<PageData, String> {
             let data = self.get_page(page_id)?.read()?;
-            let data = deserializer(data.to_vec());
+            let data = deserializer(data.to_vec(), &self);
 
             Ok(data)
         }
@@ -244,7 +250,8 @@ pub mod datastore {
                 self.flush_page(id).unwrap();
             }
         }
-        pub fn write(&mut self, table_name: String, data: Data) -> Result<(), String> {
+
+        pub fn write(&mut self, table_name: String, data: Vec<Data>) -> Result<(), String> {
             let pgd = self.master_table.get(&table_name);
 
             if pgd.is_none() {
@@ -255,12 +262,15 @@ pub mod datastore {
             let mut free_spc = u64::MAX;
             let mut page_id = -1;
 
+            let size: Vec<usize> = data.iter().map(|x| x.tp.size()).collect();
+            let size: usize = size.iter().sum();
+
             for x in pages {
-                let page_data = deserializer(self.pages.get(x).unwrap().data.to_vec());
+                let page_data = deserializer(self.pages.get(x).unwrap().data.to_vec(), &self);
 
                 let free_space_ptr = page_data.header.free_space_ptr;
 
-                if PAGE_SIZE - free_space_ptr as usize >= data.tp.size() {
+                if PAGE_SIZE - free_space_ptr as usize >= size {
                     free_spc = free_space_ptr;
                     page_id = *x as i32;
                     break;
@@ -271,15 +281,11 @@ pub mod datastore {
 
             self.update_free_space_ptr(
                 page_id as usize,
-                free_spc as usize + data.tp.size() + 1 as usize,
+                free_spc as usize + size + data.len() as usize,
             );
 
-            self.write_into_page(
-                page_id as usize,
-                free_spc as usize,
-                &serialize_data(vec![data]),
-            )
-            .map_err(|e| e.to_string())?;
+            self.write_into_page(page_id as usize, free_spc as usize, &serialize_data(data))
+                .map_err(|e| e.to_string())?;
 
             Ok(())
         }
@@ -324,5 +330,64 @@ pub mod datastore {
 
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod datastore_test {
+    use std::sync::{Arc, Mutex};
+
+    use crate::{
+        content_manager::{
+            self,
+            data_layout::data_layout::{ColData, Data, Type},
+        },
+        data_engine, DataStore,
+    };
+
+    #[test]
+    fn select_test() {
+        let mut datastore =
+            data_engine::datastore::datastore::DataStore::new("./database.db".to_string());
+
+        datastore.create_table(
+            "test".to_string(),
+            vec![
+                ColData::new(Type::Text, "username".to_string()),
+                ColData::new(Type::Text, "password".to_string()),
+            ],
+        );
+
+        datastore
+            .write(
+                "test".to_string(),
+                vec![
+                    content_manager::data_layout::data_layout::Data::new(
+                        Type::Text,
+                        &mut "bruh2".as_bytes().to_vec(),
+                    ),
+                    content_manager::data_layout::data_layout::Data::new(
+                        Type::Text,
+                        &mut "bruhpass".as_bytes().to_vec(),
+                    ),
+                ],
+            )
+            .unwrap();
+
+        datastore
+            .write(
+                "test".to_string(),
+                vec![
+                    Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
+                    Data::new(Type::Text, &mut "niggapass".as_bytes().to_vec()),
+                ],
+            )
+            .unwrap();
+
+        //let data = datastore.read_page(0).unwrap();
+
+        datastore.shutdown();
+
+        println!("{}", datastore.table_print("test".to_string()));
     }
 }

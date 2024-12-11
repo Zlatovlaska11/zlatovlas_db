@@ -1,4 +1,36 @@
-use std::{ops::Index, sync::Mutex};
+use std::{
+    error::Error,
+    fmt,
+    ops::{Deref, Index},
+    sync::Mutex,
+};
+
+#[derive(Debug)]
+enum ParseError {
+    InvalidQuery,
+    SemicolonNotFound,
+    InvalidArguments,
+}
+
+impl ParseError {
+    fn get_val(&self) -> String {
+        match self {
+            ParseError::InvalidQuery => "query is not valid".to_string(),
+            ParseError::SemicolonNotFound => {
+                "syntax error at the end of the query there need's to be a semicolon".to_string()
+            }
+            ParseError::InvalidArguments => {
+                "the arguments you provided are not valid like wtf bro".to_string()
+            }
+        }
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\n", self.get_val())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -25,7 +57,7 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn parse(stmt: String) -> Vec<Vec<TokenType>> {
+    pub fn parse(stmt: String) -> Result<Query, ParseError> {
         let mut token_chain: Vec<TokenType> = Vec::new();
 
         for x in stmt.split(' ') {
@@ -60,7 +92,6 @@ impl Query {
             parts.push(cur);
         }
 
-        // match and assign to q
         let mut q = Query {
             action: ActionType::None,
             columns: Vec::new(),
@@ -75,7 +106,7 @@ impl Query {
                 match r {
                     TokenType::Identifier(val) => buffer.lock().unwrap().push(val),
                     TokenType::Condition(val) => buffer.lock().unwrap().push(val),
-                    _ => panic!("what the hell"),
+                    _ => return Err(ParseError::InvalidQuery),
                 }
             }
 
@@ -87,9 +118,12 @@ impl Query {
                     q.columns = buffer.lock().unwrap().to_vec();
                 }
                 TokenType::Navigator() => q.table = buffer.lock().unwrap().index(0).to_string(),
-                TokenType::Identifier(_) => panic!("wth"),
+                TokenType::Identifier(_) => return Err(ParseError::InvalidQuery),
                 TokenType::Condition(_) => {
                     let bfr = buffer.lock().unwrap();
+                    if bfr.len() < 3 {
+                        return Err(ParseError::InvalidArguments);
+                    }
                     q.condition = Some((
                         bfr.index(0).to_string(),
                         bfr.index(1).to_string(),
@@ -101,11 +135,12 @@ impl Query {
             buffer.lock().unwrap().clear();
         }
 
-        println!("{:?}", q);
+        //println!("{:?}", q);
 
-        return parts;
+        return Ok(q);
     }
 }
+
 fn match_keyword(x: &str) -> TokenType {
     match x.to_uppercase().as_str() {
         "SELECT" => TokenType::Keyword(ActionType::Select),
@@ -119,6 +154,7 @@ fn match_keyword(x: &str) -> TokenType {
 
 #[cfg(test)]
 mod parse_test {
+
     use crate::parser::Query;
     extern crate test;
 
@@ -128,10 +164,13 @@ mod parse_test {
     }
 
     #[test]
+    #[should_panic]
     fn parse() {
-        println!(
-            "{:?}",
-            Query::parse("SELECT * FROM test WHERE id < 20;".to_string())
-        );
+        let query = Query::parse("this is some bullshit".to_string());
+
+        match query {
+            Ok(q) => println!("{:?}", q),
+            Err(_) => panic!("i know"),
+        }
     }
 }

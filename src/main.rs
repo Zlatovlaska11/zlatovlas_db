@@ -1,8 +1,8 @@
 #![feature(test)]
 pub mod content_manager;
 pub mod data_engine;
-pub mod server;
 pub mod parser;
+pub mod server;
 
 use std::{
     path::PathBuf,
@@ -10,7 +10,8 @@ use std::{
 };
 
 use clap::Parser;
-use data_engine::datastore::datastore::DataStore;
+use content_manager::data_layout::data_layout::{ColData, Data, Type};
+use data_engine::datastore::{self, datastore::DataStore};
 use once_cell::sync::OnceCell;
 
 #[derive(Parser, Debug)]
@@ -46,48 +47,73 @@ fn init_args() {
 
 #[tokio::main]
 async fn main() {
-    init_args();
+    //init_args();
 
-    server::ws_server::ws_router().await;
+    //server::ws_server::ws_router().await;
 
-    // let mut datastore =
-    //     data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());
+    let mut datastore =
+        data_engine::datastore::datastore::DataStore::new("./database.db".to_string());
 
-    // datastore.create_table(
-    //     "test".to_string(),
-    //     vec![ColData::new(Type::Text, "username".to_string())],
-    // );
-    // datastore
-    //     .write(
-    //         "users".to_string(),
-    //         content_manager::data_layout::data_layout::Data::new(
-    //             Type::Text,
-    //             &mut "test3".as_bytes().to_vec(),
-    //         ),
-    //     )
-    //     .unwrap();
+    // DataStore.set(Arc::new(Mutex::new(datastore))).unwrap();
+    // let mut datastore = DataStore.get().unwrap().lock().unwrap();
 
-    // datastore
-    //     .write(
-    //         "test".to_string(),
-    //         content_manager::data_layout::data_layout::Data::new(
-    //             Type::Text,
-    //             &mut "bruh2".as_bytes().to_vec(),
-    //         ),
-    //     )
-    //     .unwrap();
-    //
-    // datastore
-    //     .write(
-    //         "test".to_string(),
-    //         Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
-    //     )
-    //     .unwrap();
+    datastore.create_table(
+        "test".to_string(),
+        vec![
+            ColData::new(Type::Text, "username".to_string()),
+            ColData::new(Type::Text, "password".to_string()),
+        ],
+    );
+
+    println!("succes");
+
+    datastore
+        .write(
+            "test".to_string(),
+            vec![
+                Data::new(Type::Text, &mut "bruh2".as_bytes().to_vec()),
+                Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec()),
+            ],
+        )
+        .unwrap();
+
+    datastore
+        .write(
+            "test".to_string(),
+            vec![
+                Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec()),
+            ],
+        )
+        .unwrap();
+
+
+    datastore
+        .write(
+            "test".to_string(),
+            vec![
+                Data::new(Type::Text, &mut "bruh2".as_bytes().to_vec()),
+                Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec()),
+            ],
+        )
+        .unwrap();
+
+
+    println!("succes2");
+
+    datastore
+        .write(
+            "test".to_string(),
+            vec![
+                Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
+                Data::new(Type::Text, &mut "niggapass".as_bytes().to_vec()),
+            ],
+        )
+        .unwrap();
 
     //datastore.write_into_page(1, 153, b"thello there").unwrap();
     // let data = datastore.read_page(0).unwrap();
-    // println!("{}", data);
-    // datastore.shutdown();
+    datastore.table_print("test".to_string());
+    datastore.shutdown();
 }
 
 // use warp::Filter;
