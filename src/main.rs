@@ -80,12 +80,9 @@ async fn main() {
     datastore
         .write(
             "test".to_string(),
-            vec![
-                Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec()),
-            ],
+            vec![Data::new(Type::Text, &mut "bruhpass".as_bytes().to_vec())],
         )
         .unwrap();
-
 
     datastore
         .write(
@@ -97,15 +94,14 @@ async fn main() {
         )
         .unwrap();
 
-
     println!("succes2");
 
     datastore
         .write(
             "test".to_string(),
             vec![
-                Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
-                Data::new(Type::Text, &mut "niggapass".as_bytes().to_vec()),
+                Data::new(Type::Text, &mut "test".as_bytes().to_vec()),
+                Data::new(Type::Text, &mut "testttt".as_bytes().to_vec()),
             ],
         )
         .unwrap();
