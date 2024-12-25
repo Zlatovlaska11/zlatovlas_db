@@ -105,7 +105,7 @@ async fn main() {
 
     //datastore.write_into_page(1, 153, b"thello there").unwrap();
     // let data = datastore.read_page(0).unwrap();
-    datastore.table_print("test".to_string());
+    datastore.table_print("test".to_string(), None);
     datastore.shutdown();
 }
 

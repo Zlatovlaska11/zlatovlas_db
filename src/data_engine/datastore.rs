@@ -1,5 +1,6 @@
 pub mod datastore {
     extern crate bincode;
+    use futures::SinkExt;
     use prettytable::{row, Cell, Row, Table};
 
     use crate::{
@@ -138,48 +139,119 @@ pub mod datastore {
             datastore
         }
 
-        //TODO: this needs to be finished to filter with the instructions bellow
-        pub fn table_print(&mut self, table_name: String /*filter: Option<F>*/) -> String
-        // where
-        //     F: Fn(Vec<Data>) -> bool,
-        {
-            let mut table = Table::new();
+        pub fn select(
+            &mut self,
+            table_name: String,
+            filter: Option<Box<dyn Fn(&Vec<Data>) -> bool>>,
+        ) -> Option<Vec<Vec<String>>> {
+            let metadata = match self.master_table.get(&table_name) {
+                Some(metadata) => metadata.clone(),
+                None => {
+                    eprintln!("Table '{}' not found.", table_name);
+                    return None;
+                }
+            };
 
-            table.add_row(
-                self.master_table
-                    .get(&table_name)
-                    .unwrap()
-                    .table_layout
-                    .iter()
-                    .map(|x| x.col_name.clone())
-                    .collect(),
-            );
+            // Add table layout as the header row
+            let header = metadata
+                .table_layout
+                .iter()
+                .map(|col| Cell::new(&col.col_name))
+                .collect::<Vec<_>>();
 
-            for x in self.master_table.get(&table_name).unwrap().pages.clone() {
-                let page = self.get_page(x).unwrap();
+            // Collect data pages immutably
+            let page_ids = metadata.pages.clone();
 
-                let data = deserializer(page.data.to_vec(), &self);
+            for page_id in page_ids {
+                if let Ok(page) = self.get_page(page_id) {
+                    let page_data = deserializer(page.data.clone().to_vec(), self);
 
-                let mut row: Vec<Cell> = Vec::new();
+                    let rows = match &filter {
+                        Some(f) => page_data
+                            .data
+                            .into_iter()
+                            .filter(|row| f(row))
+                            .collect::<Vec<_>>(),
+                        None => page_data.data,
+                    };
 
-                // by the table layout and the column in the filter index the inner vec and make
-                // the filter for this
-
-                // if filter.is_some() {
-                //
-                //     filter here
-                // }
-
-                for x in data.data {
-                    for data in x {
-                        row.push(Cell::new(&String::from_utf8(data.data).unwrap()));
-                    }
-
-                    table.add_row(row.clone().into());
-                    row.clear();
+                    let dta = rows
+                        .iter()
+                        .map(|x| {
+                            x.iter()
+                                .map(|f| String::from_utf8(f.data.clone()).unwrap().to_string())
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<Vec<_>>>();
+                    return Some(dta);
                 }
             }
 
+            None
+        }
+
+        ///
+        /// Requires a table name and a cmp func that returns a bool with (Optional)
+        ///
+        //TODO: this needs to be finished to filter with the instructions bellow
+        //TODO: retain the cloninng with this shit
+        //TODO: Rework this to not filter but will create a separate fn to select data
+
+        pub fn table_print(
+            &mut self,
+            table_name: String,
+            filter: Option<Box<dyn Fn(&Vec<Data>) -> bool>>,
+        ) -> String {
+            let mut table = Table::new();
+
+            // Fetch the table metadata immutably
+            let metadata = match self.master_table.get(&table_name) {
+                Some(metadata) => metadata.clone(),
+                None => {
+                    eprintln!("Table '{}' not found.", table_name);
+                    return String::new();
+                }
+            };
+
+            // Add table layout as the header row
+            let header = metadata
+                .table_layout
+                .iter()
+                .map(|col| Cell::new(&col.col_name))
+                .collect::<Vec<_>>();
+
+            table.add_row(Row::new(header));
+
+            // Collect data pages immutably
+            let page_ids = metadata.pages.clone();
+
+            for page_id in page_ids {
+                if let Ok(page) = self.get_page(page_id) {
+                    let page_data = deserializer(page.data.clone().to_vec(), self);
+
+                    // Apply the filter if provided, otherwise use a default that always returns true
+                    let rows = match &filter {
+                        Some(f) => page_data
+                            .data
+                            .into_iter()
+                            .filter(|row| f(row))
+                            .collect::<Vec<_>>(),
+                        None => page_data.data,
+                    };
+
+                    // Add rows to the table
+                    for row_data in rows {
+                        let row = row_data
+                            .into_iter()
+                            .map(|data| Cell::new(&String::from_utf8_lossy(&data.data)))
+                            .collect::<Vec<_>>();
+
+                        table.add_row(Row::new(row));
+                    }
+                }
+            }
+
+            // Print and return the table as a string
             table.printstd();
             table.to_string()
         }
@@ -407,6 +479,6 @@ mod datastore_test {
 
         datastore.shutdown();
 
-        println!("{}", datastore.table_print("test".to_string()));
+        println!("{}", datastore.table_print("test".to_string(), None));
     }
 }

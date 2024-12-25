@@ -35,7 +35,7 @@ pub async fn handle_connection(ws: warp::ws::WebSocket) {
                                     .unwrap()
                                     .lock()
                                     .unwrap()
-                                    .table_print("test".to_string())
+                                    .table_print("test".to_string(), None)
                             ))
                             .is_err()
                         {
