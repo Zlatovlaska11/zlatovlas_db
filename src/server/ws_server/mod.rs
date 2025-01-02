@@ -2,6 +2,8 @@ pub use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc::{self, unbounded_channel};
 use warp::Filter;
 
+use crate::{parser::executor::executor, DataStore};
+
 pub async fn handle_connection(ws: warp::ws::WebSocket) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -25,26 +27,14 @@ pub async fn handle_connection(ws: warp::ws::WebSocket) {
                     let text = msg.to_str().unwrap();
                     println!("recived message: {}", text);
 
-                    if text == "show\n" {
-                        println!("recived a show");
                         if tx
                             .send(format!(
-                                "{}",
-                                crate::DataStore
-                                    .get()
-                                    .unwrap()
-                                    .lock()
-                                    .unwrap()
-                                    .table_print("test".to_string(), None)
+                                "{:?}",
+                                executor(crate::parser::Query::parse(msg.to_str().unwrap().to_string().trim_end_matches('\n').to_string()).unwrap(), &mut DataStore.get().unwrap().lock().unwrap())
                             ))
                             .is_err()
                         {
                             break;
-                        }
-                    } else {
-                        if tx.send(format!("Echo: {}", text)).is_err() {
-                            break;
-                        }
                     }
                 }
             }

@@ -1,14 +1,14 @@
 pub mod executor;
+pub mod formater;
 
 use std::{
-    error::Error,
     fmt,
     ops::{Deref, Index},
     sync::Mutex,
 };
 
 #[derive(Debug)]
-enum ParseError {
+pub enum ParseError {
     InvalidQuery,
     SemicolonNotFound,
     InvalidArguments,
