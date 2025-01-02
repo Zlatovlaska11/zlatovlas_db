@@ -27,14 +27,27 @@ pub async fn handle_connection(ws: warp::ws::WebSocket) {
                     let text = msg.to_str().unwrap();
                     println!("recived message: {}", text);
 
-                        if tx
-                            .send(format!(
-                                "{:?}",
-                                executor(crate::parser::Query::parse(msg.to_str().unwrap().to_string().trim_end_matches('\n').to_string()).unwrap(), &mut DataStore.get().unwrap().lock().unwrap())
-                            ))
-                            .is_err()
-                        {
-                            break;
+                    let parse = crate::parser::Query::parse(
+                        msg.to_str()
+                            .unwrap()
+                            .to_string()
+                            .trim_end_matches('\n')
+                            .to_string(),
+                    );
+                    if parse.is_err() {
+                        tx.send(format!("{:?}", parse));
+                        continue;
+                    }
+                    let message = executor(
+                        parse.unwrap(),
+                        &mut DataStore.get().unwrap().lock().unwrap(),
+                    );
+                    if message.is_err() {
+                        tx.send(format!("{:?}", message));
+                        continue;
+                    }
+                    if tx.send(format!("{}", message.unwrap())).is_err() {
+                        break;
                     }
                 }
             }
