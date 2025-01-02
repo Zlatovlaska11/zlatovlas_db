@@ -1,6 +1,5 @@
 pub mod datastore {
     extern crate bincode;
-    use futures::SinkExt;
     use prettytable::{row, Cell, Row, Table};
 
     use crate::{
@@ -15,7 +14,7 @@ pub mod datastore {
     };
     use std::{
         collections::HashMap,
-        fs::File,
+        fs::{self, File},
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
         usize,
@@ -70,21 +69,28 @@ pub mod datastore {
             };
 
             // Load table metadata from "schemes.dat".
-            let mut table_metadata: Vec<_> = vec![];
-            if let Ok(mut metadata_file) = File::open("schemes.dat") {
+            let mut table_metadata: HashMap<String, TableMetadata> = HashMap::new();
+            if let Ok(mut metadata_file) = File::open("./schemes.dat") {
                 let mut buffer = String::new();
                 metadata_file
                     .read_to_string(&mut buffer)
                     .expect("Failed to read table metadata");
 
                 table_metadata = bincode::deserialize(buffer.as_bytes()).unwrap_or_default();
+                println!("{:?}", table_metadata)
             }
+
+            datastore.master_table = table_metadata;
+
+            println!("{:?}", datastore.master_table.keys());
 
             // cannot find in the hashmap due to the name problem with not striping the null
             // characters shit ass bithch problem
 
             // Iterate through all pages in the file.
+            println!("{}", number_of_pages);
             for page_index in 0..number_of_pages {
+                println!("in iteration");
                 // Allocate a new page in the DataStore.
                 datastore.allocate_page();
 
@@ -109,6 +115,7 @@ pub mod datastore {
 
                 // Update the master table with page references and metadata.
                 let table_name = &page_content.header.table_name;
+                println!("name -> {}", table_name);
 
                 if datastore.master_table.contains_key(table_name) {
                     datastore
@@ -118,21 +125,13 @@ pub mod datastore {
                         .pages
                         .push(page_index);
                 } else {
-                    let layout = table_metadata
-                        .get(page_index)
-                        .map(|metadata: &TableMetadata| metadata.table_layout.clone())
-                        .unwrap_or_else(Vec::new);
-
                     let table_name =
                         String::from_utf8(page_content.header.table_name.to_string().into())
                             .unwrap()
                             .trim_end_matches('\0')
                             .to_string();
 
-                    datastore.master_table.insert(
-                        table_name.clone(),
-                        TableMetadata::new(vec![page_index], layout),
-                    );
+                    println!("here");
                 }
             }
 
@@ -323,6 +322,12 @@ pub mod datastore {
 
         pub fn shutdown(&mut self) {
             let mut pages: Vec<usize> = Vec::new();
+
+
+            {
+                let file = File::create("./schemes.dat").unwrap();
+                bincode::serialize_into(file, &self.master_table).expect("Failed to serialize HashMap");
+            }
 
             for (id, page) in &self.pages {
                 if page.modified {
