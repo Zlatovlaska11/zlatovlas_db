@@ -178,7 +178,7 @@ pub mod datastore {
                         .iter()
                         .map(|x| {
                             x.iter()
-                                .map(|f| String::from_utf8(f.data.clone()).unwrap().to_string())
+                                .map(|f| String::from_utf8_lossy(&f.data.to_vec()).to_string().trim_end_matches('\u{000}').to_string())
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<Vec<_>>>();
