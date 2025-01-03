@@ -10,7 +10,7 @@ use std::{
 };
 
 use clap::Parser;
-use data_engine::datastore::{datastore::DataStore};
+use data_engine::datastore::datastore::DataStore;
 use once_cell::sync::OnceCell;
 
 #[derive(Parser, Debug)]
@@ -49,11 +49,15 @@ async fn main() {
     init_args();
 
     {
-        DataStore.get().unwrap().lock().unwrap().table_print("test".to_string(), None);
+        DataStore
+            .get()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .table_print("test".to_string(), None);
     }
 
     server::ws_server::ws_router().await;
-
 
     // for some reason the code works but only when selecting the username and when selecting
     // anything other than that it just gives you the usernames idk why need to work on this shit

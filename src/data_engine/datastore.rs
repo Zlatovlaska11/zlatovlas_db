@@ -16,7 +16,7 @@ pub mod datastore {
     };
     use std::{
         collections::HashMap,
-        fs::{File},
+        fs::File,
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
         usize,
@@ -166,11 +166,15 @@ pub mod datastore {
                     // some if any specific columns and none if * (all columns)
                     match columns {
                         Some(ref cols) => {
-                            let dta = page_data.data
+                            println!("{:?}", cols);
+                            let dta = page_data
+                                .data
                                 .iter()
                                 // btw i have no idea what this shit does like wtf this clone is
                                 // longer than my fookin penis :(
-                                .map(|x| filter_data(x.to_vec(), table_layout.clone(), <std::option::Option<Vec<std::string::String>> as Clone>::clone(&columns).unwrap().clone()))
+                                .map(|x| {
+                                    filter_data(x.to_vec(), table_layout.clone(), cols.to_vec())
+                                })
                                 .collect::<Vec<Vec<_>>>();
 
                             return Some(dta);
@@ -449,7 +453,6 @@ pub mod datastore {
 
 #[cfg(test)]
 mod datastore_test {
-    
 
     use crate::{
         content_manager::{
@@ -515,9 +518,11 @@ pub fn filter_data(
 
     let col_names: Vec<String> = table_layout.into_iter().map(|x| x.col_name).collect();
 
-    for x in 0..columns.len() {
-        if col_names.contains(&columns[x]) {
-            possitions.push(x);
+    for x in 0..col_names.len() {
+        for y in 0..columns.len() {
+            if col_names[x] == columns[y] {
+                possitions.push(x);
+            }
         }
     }
 

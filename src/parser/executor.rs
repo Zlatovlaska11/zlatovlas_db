@@ -25,7 +25,19 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
                 let data = datastore.select(query.table.clone(), Some(condition), &cols);
                 match data {
                     Some(data) => {
-                        return Ok(formater::JsonSer::serialize(query.table, data, datastore));
+                        let hash_map: Vec<String> = datastore
+                            .master_table
+                            .get(&query.table)
+                            .unwrap()
+                            .table_layout
+                            .iter()
+                            .map(|x| x.col_name.clone())
+                            .collect();
+                        return Ok(formater::JsonSer::serialize(
+                            query.table,
+                            data,
+                            cols.unwrap_or(hash_map),
+                        ));
                     }
                     None => return Err(ParseError::InvalidQuery),
                 }
@@ -35,10 +47,11 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
                 println!("{:?}", data);
                 match data {
                     Some(data) => {
+                        let hash_map: Vec<String> = datastore.master_table.get(&query.table).unwrap().table_layout.iter().map(|x| x.col_name.clone()).collect();
                         return Ok(formater::JsonSer::serialize(
                             query.table.clone(),
                             data,
-                            datastore,
+                            cols.unwrap_or(hash_map),
                         ))
                     }
                     None => return Err(ParseError::InvalidQuery),
