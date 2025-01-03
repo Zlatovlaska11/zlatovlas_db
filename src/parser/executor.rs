@@ -1,31 +1,46 @@
 use serde_json::Value;
-use warp::filters::query::query;
 
 use crate::{content_manager::data_layout::data_layout::Data, data_engine::datastore::datastore};
 
-use super::{formater::{self, Formater}, ParseError, Query};
+use super::{
+    formater::{self, Formater},
+    ParseError, Query,
+};
 
-pub fn executor(
-    query: Query,
-    datastore: &mut datastore::DataStore,
-) -> Result<Value, ParseError> {
+pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Value, ParseError> {
     match query.action {
         super::ActionType::Insert => todo!(),
         super::ActionType::Delete => todo!(),
         super::ActionType::Select => {
             //TODO: make a not fancy select data from table
+            println!("select statement");
+            let cols: Option<Vec<String>>;
+            if query.columns.contains(&"*".to_string()) {
+                cols = None;
+            } else {
+                cols = Some(query.columns.clone());
+            }
             if query.condition.is_some() {
                 let condition = condition(query.clone(), datastore).unwrap();
-                let data = datastore.select(query.table.clone(), Some(condition));
+                let data = datastore.select(query.table.clone(), Some(condition), &cols);
                 match data {
-                    Some(data) => return Ok(formater::JsonSer::serialize(query.table, data, datastore)),
+                    Some(data) => {
+                        return Ok(formater::JsonSer::serialize(query.table, data, datastore));
+                    }
                     None => return Err(ParseError::InvalidQuery),
                 }
             } else {
-                let data = datastore.select(query.table.clone(), None);
+                let data = datastore.select(query.table.clone(), None, &cols);
 
+                println!("{:?}", data);
                 match data {
-                    Some(data) => return Ok(formater::JsonSer::serialize(query.table.clone(), data, datastore)),
+                    Some(data) => {
+                        return Ok(formater::JsonSer::serialize(
+                            query.table.clone(),
+                            data,
+                            datastore,
+                        ))
+                    }
                     None => return Err(ParseError::InvalidQuery),
                 }
             }

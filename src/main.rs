@@ -10,8 +10,7 @@ use std::{
 };
 
 use clap::Parser;
-use content_manager::data_layout::data_layout::{ColData, Data, Type};
-use data_engine::datastore::{self, datastore::DataStore};
+use data_engine::datastore::{datastore::DataStore};
 use once_cell::sync::OnceCell;
 
 #[derive(Parser, Debug)]
@@ -49,10 +48,18 @@ fn init_args() {
 async fn main() {
     init_args();
 
+    {
+        DataStore.get().unwrap().lock().unwrap().table_print("test".to_string(), None);
+    }
+
     server::ws_server::ws_router().await;
 
-    // data is now being returned without the trim and any formating mayebe the time to write the
-    // client?
+
+    // for some reason the code works but only when selecting the username and when selecting
+    // anything other than that it just gives you the usernames idk why need to work on this shit
+    // but i hope that this will get better
+    //
+    // btw added some shitty code comments you'll laugh quite a bit
 
     //let mut datastore =
     //    data_engine::datastore::datastore::DataStore::from_file("./database.db".to_string());

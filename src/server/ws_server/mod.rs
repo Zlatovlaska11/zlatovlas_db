@@ -1,5 +1,5 @@
 pub use futures::{SinkExt, StreamExt};
-use tokio::sync::mpsc::{self, unbounded_channel};
+use tokio::sync::mpsc::{self};
 use warp::Filter;
 
 use crate::{parser::executor::executor, DataStore};
@@ -34,6 +34,7 @@ pub async fn handle_connection(ws: warp::ws::WebSocket) {
                             .trim_end_matches('\n')
                             .to_string(),
                     );
+
                     if parse.is_err() {
                         tx.send(format!("{:?}", parse));
                         continue;

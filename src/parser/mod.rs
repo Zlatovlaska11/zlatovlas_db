@@ -3,7 +3,7 @@ pub mod formater;
 
 use std::{
     fmt,
-    ops::{Deref, Index},
+    ops::Index,
     sync::Mutex,
 };
 
