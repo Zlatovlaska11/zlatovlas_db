@@ -7,7 +7,11 @@ use crate::{
 };
 
 pub trait Formater {
-    fn serialize(table_name: String, data: Vec<Vec<String>>, datastore: &DataStore) -> serde_json::Value;
+    fn serialize(
+        table_name: String,
+        data: Vec<Vec<String>>,
+        datastore: &DataStore,
+    ) -> serde_json::Value;
 }
 
 pub struct JsonSer {
@@ -17,7 +21,7 @@ pub struct JsonSer {
 
 #[derive(Serialize)]
 struct CellData {
-    name: String,
+    column_name: String,
     data: String,
 }
 
@@ -28,20 +32,22 @@ pub struct Row {
 
 impl Row {
     // remake this for Vec<Vec<Data>>
-    pub fn new(data_layout: Vec<ColData>, data: Vec<Vec<String>>) -> Self {
+    pub fn new(
+        data_layout: Vec<ColData>,
+        data: Vec<Vec<String>>,
+    ) -> Self {
         let col_name: Vec<String> = data_layout.iter().map(|x| x.col_name.clone()).collect();
 
         let mut celldata: Vec<CellData> = Vec::new();
 
         for x in 0..data.len() {
-            // add support for 2d array with looping over the data second dim. and arranging the
-            // data with the col name one for and index the inner array and can both index them
-            // with the second loop
             for y in 0..col_name.len() {
-                celldata.push(CellData {
-                    name: col_name[y].clone(),
-                    data: data[x][y].clone().to_string(),
-                });
+                if y < data[x].len() {
+                    celldata.push(CellData {
+                        column_name: col_name[y].clone(),
+                        data: data[x][y].clone(),
+                    });
+                }
             }
         }
 
@@ -60,8 +66,6 @@ impl Formater for JsonSer {
         let row = Row::new(layout.to_vec(), data);
 
         println!("{}", serde_json::to_string(&row).unwrap());
-        return serde_json::json!(&row)
-
-
+        return serde_json::json!(&row);
     }
 }

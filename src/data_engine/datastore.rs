@@ -1,6 +1,8 @@
+use crate::content_manager::data_layout::data_layout::Data;
+
 pub mod datastore {
     extern crate bincode;
-    use prettytable::{row, Cell, Row, Table};
+    use prettytable::{Cell, Row, Table};
 
     use crate::{
         content_manager::{
@@ -14,11 +16,13 @@ pub mod datastore {
     };
     use std::{
         collections::HashMap,
-        fs::{self, File},
+        fs::{File},
         io::{self, Read, Seek, Write},
         os::unix::fs::FileExt,
         usize,
     };
+
+    use super::filter_data;
 
     #[derive(Debug)]
     pub struct DataStore {
@@ -142,6 +146,7 @@ pub mod datastore {
             &mut self,
             table_name: String,
             filter: Option<Box<dyn Fn(&Vec<Data>) -> bool>>,
+            columns: &Option<Vec<String>>,
         ) -> Option<Vec<Vec<String>>> {
             let metadata = match self.master_table.get(&table_name) {
                 Some(metadata) => metadata.clone(),
@@ -151,38 +156,51 @@ pub mod datastore {
                 }
             };
 
-            // Add table layout as the header row
-            let header = metadata
-                .table_layout
-                .iter()
-                .map(|col| Cell::new(&col.col_name))
-                .collect::<Vec<_>>();
-
-            // Collect data pages immutably
             let page_ids = metadata.pages.clone();
+            let table_layout = metadata.table_layout;
 
             for page_id in page_ids {
                 if let Ok(page) = self.get_page(page_id) {
                     let page_data = deserializer(page.data.clone().to_vec(), self);
 
-                    let rows = match &filter {
-                        Some(f) => page_data
-                            .data
-                            .into_iter()
-                            .filter(|row| f(row))
-                            .collect::<Vec<_>>(),
-                        None => page_data.data,
-                    };
+                    // some if any specific columns and none if * (all columns)
+                    match columns {
+                        Some(ref cols) => {
+                            let dta = page_data.data
+                                .iter()
+                                // btw i have no idea what this shit does like wtf this clone is
+                                // longer than my fookin penis :(
+                                .map(|x| filter_data(x.to_vec(), table_layout.clone(), <std::option::Option<Vec<std::string::String>> as Clone>::clone(&columns).unwrap().clone()))
+                                .collect::<Vec<Vec<_>>>();
 
-                    let dta = rows
-                        .iter()
-                        .map(|x| {
-                            x.iter()
-                                .map(|f| String::from_utf8_lossy(&f.data.to_vec()).to_string().trim_end_matches('\u{000}').to_string())
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<Vec<_>>>();
-                    return Some(dta);
+                            return Some(dta);
+                        }
+                        None => {
+                            let rows = match &filter {
+                                Some(f) => page_data
+                                    .data
+                                    .into_iter()
+                                    .filter(|row| f(row))
+                                    .collect::<Vec<_>>(),
+                                None => page_data.data,
+                            };
+
+                            let dta = rows
+                                .iter()
+                                .map(|x| {
+                                    x.iter()
+                                        .map(|f| {
+                                            String::from_utf8_lossy(&f.data.to_vec())
+                                                .to_string()
+                                                .trim_end_matches('\u{000}')
+                                                .to_string()
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .collect::<Vec<Vec<_>>>();
+                            return Some(dta);
+                        }
+                    }
                 }
             }
 
@@ -323,10 +341,10 @@ pub mod datastore {
         pub fn shutdown(&mut self) {
             let mut pages: Vec<usize> = Vec::new();
 
-
             {
                 let file = File::create("./schemes.dat").unwrap();
-                bincode::serialize_into(file, &self.master_table).expect("Failed to serialize HashMap");
+                bincode::serialize_into(file, &self.master_table)
+                    .expect("Failed to serialize HashMap");
             }
 
             for (id, page) in &self.pages {
@@ -431,14 +449,14 @@ pub mod datastore {
 
 #[cfg(test)]
 mod datastore_test {
-    use std::sync::{Arc, Mutex};
+    
 
     use crate::{
         content_manager::{
             self,
             data_layout::data_layout::{ColData, Data, Type},
         },
-        data_engine, DataStore,
+        data_engine,
     };
 
     #[test]
@@ -486,4 +504,33 @@ mod datastore_test {
 
         println!("{}", datastore.table_print("test".to_string(), None));
     }
+}
+
+pub fn filter_data(
+    data: Vec<Data>,
+    table_layout: Vec<crate::content_manager::data_layout::data_layout::ColData>,
+    columns: Vec<String>,
+) -> Vec<String> {
+    let mut possitions: Vec<usize> = Vec::new();
+
+    let col_names: Vec<String> = table_layout.into_iter().map(|x| x.col_name).collect();
+
+    for x in 0..columns.len() {
+        if col_names.contains(&columns[x]) {
+            possitions.push(x);
+        }
+    }
+
+    let mut new_data: Vec<String> = Vec::new();
+
+    for x in possitions {
+        new_data.push(
+            String::from_utf8_lossy(&data[x].data)
+                .to_string()
+                .trim_matches('\u{000}')
+                .to_string(),
+        );
+    }
+
+    new_data
 }

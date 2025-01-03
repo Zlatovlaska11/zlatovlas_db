@@ -6,7 +6,7 @@ pub mod data_layout {
     use serde::{Deserialize, Serialize};
     use tabled::Tabled;
 
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
     pub enum Type {
         Number,
         Text,
@@ -53,7 +53,7 @@ pub mod data_layout {
         }
     }
 
-    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub struct ColData {
         pub col_type: Type,
         pub col_name: String,
