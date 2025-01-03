@@ -5,11 +5,23 @@ cover: >-
   for a GitHub repository named 'Zlatovlas DB,' a high-performance database
   written in Rust. The design features a sleek.webp
 coverY: 65.96267837541163
+layout:
+  cover:
+    visible: true
+    size: full
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: true
 ---
 
-# Zlatovalas DB
-
-
+# Zlatovlas DB
 
 **Zlatovlas DB** is a high-performance database system written in Rust. Designed to prioritize speed, reliability, and scalability, Zlatovlas DB is ideal for modern applications that demand efficient data management.
 
