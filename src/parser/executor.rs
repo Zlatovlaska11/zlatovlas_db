@@ -9,7 +9,22 @@ use super::{
 
 pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Value, ParseError> {
     match query.action {
-        super::ActionType::Insert => todo!(),
+        super::ActionType::Insert => {
+            let mut dts = vec![];
+
+            for x in query.values.unwrap() {
+                dts.push(Data::new(
+                    crate::content_manager::data_layout::data_layout::Type::Text,
+                    &mut x.as_bytes().to_vec(),
+                ));
+            }
+            let succ = datastore.write(query.table, &mut dts);
+
+            match succ {
+                Ok(_) => return Ok(serde_json::json!("Succes")),
+                Err(_) => return Err(ParseError::InvalidQuery),
+            }
+        }
         super::ActionType::Delete => todo!(),
         super::ActionType::Select => {
             //TODO: make a not fancy select data from table

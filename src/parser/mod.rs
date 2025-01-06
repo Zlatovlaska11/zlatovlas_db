@@ -52,6 +52,7 @@ pub struct Query {
     pub columns: Vec<String>,
     pub table: String,
     pub condition: Option<(String, String, String)>,
+    pub values: Option<Vec<String>>,
 }
 
 impl Query {
@@ -95,9 +96,15 @@ impl Query {
             columns: Vec::new(),
             table: String::new(),
             condition: None,
+            values: None,
         };
 
         let buffer: Mutex<Vec<String>> = Mutex::new(Vec::new());
+        println!("{:?}", parts);
+
+        if *parts.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Insert) {
+            return Query::parse_insert(parts);
+        }
 
         for x in &parts {
             for r in x[1..].to_vec() {
@@ -135,6 +142,56 @@ impl Query {
 
         return Ok(q);
     }
+
+    pub fn parse_insert(tokens: Vec<Vec<TokenType>>) -> Result<Query, ParseError> {
+        if tokens.is_empty() || tokens[0].is_empty() {
+            return Err(ParseError::InvalidQuery);
+        }
+
+        match &tokens[0][0] {
+            TokenType::Keyword(ActionType::Insert) => (),
+            _ => return Err(ParseError::InvalidQuery),
+        }
+
+        let table = match &tokens[1][1] {
+            TokenType::Identifier(name) => name,
+            _ => return Err(ParseError::InvalidArguments),
+        };
+
+        let mut cols = vec![];
+
+        for x in &tokens[1][2..] {
+            match x {
+                TokenType::Identifier(col) => cols.push(col.to_string().trim_matches(['(', ')', ',']).to_string()),
+                _ => return Err(ParseError::InvalidArguments),
+            }
+        }
+
+        let vals = &tokens[2][1..];
+
+        let mut vls = vec![];
+
+        for x in vals {
+            match x {
+                TokenType::Identifier(val) => {
+                    vls.push(val.to_string().trim_end_matches([';', '\n']).to_string())
+                }
+                _ => return Err(ParseError::InvalidArguments),
+            }
+        }
+
+        let query = Query {
+            action: ActionType::Insert,
+            columns: cols.to_vec(),
+            table: table.to_string(),
+            condition: None,
+            values: Some(vls),
+        };
+
+        Ok(query)
+
+        // Parse the table and columns
+    }
 }
 
 fn match_keyword(x: &str) -> TokenType {
@@ -163,9 +220,12 @@ mod parse_test {
 
     #[test]
     fn insert() {
-
-        //println!("{:?}", Query::parse("INSERT INTO test (usarname, password) VALUES ('test', 'test2') ;".to_string()));
-
+        println!(
+            "{:?}",
+            Query::parse(
+                "INSERT INTO test (username, password) VALUES ('user1', 'pass1');".to_string()
+            )
+        );
     }
 
     #[test]
