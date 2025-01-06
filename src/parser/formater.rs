@@ -30,13 +30,15 @@ pub struct Row {
     Data: Vec<CellData>,
 }
 
+#[derive(Serialize)]
+struct SendData {
+    Layout: Value,
+    Rows: Value,
+}
+
 impl Row {
     // remake this for Vec<Vec<Data>>
-    pub fn new(
-        data_layout: Vec<String>,
-        data: Vec<Vec<String>>,
-    ) -> Self {
-
+    pub fn new(data_layout: Vec<String>, data: Vec<Vec<String>>) -> Self {
         let mut celldata: Vec<CellData> = Vec::new();
 
         for x in 0..data.len() {
@@ -55,10 +57,13 @@ impl Row {
 }
 
 impl Formater for JsonSer {
-    fn serialize(table_name: String, data: Vec<Vec<String>>, layout: Vec<String>) -> Value {
+    fn serialize(_table_name: String, data: Vec<Vec<String>>, layout: Vec<String>) -> Value {
+        let lt = serde_json::json!(layout);
         let row = Row::new(layout.to_vec(), data);
 
-        println!("{}", serde_json::to_string(&row).unwrap());
-        return serde_json::json!(&row);
+        //println!("{}", serde_json::to_string(&row).unwrap());
+        let jrow = serde_json::json!(&row);
+
+        return serde_json::json!( SendData {Rows: jrow, Layout: lt });
     }
 }
