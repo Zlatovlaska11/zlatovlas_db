@@ -97,10 +97,9 @@ pub mod serializer {
 
         let data_packs = &dta[88..];
         let tbl_name = String::from_utf8(table_name.to_vec()).unwrap().to_string();
-        
 
+        // need to change that this shit might kill it all one day
         let x = dts.master_table.get("test").unwrap().row_len;
-
 
         let in_one_row = x;
 

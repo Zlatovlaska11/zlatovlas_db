@@ -81,21 +81,15 @@ pub mod datastore {
                     .expect("Failed to read table metadata");
 
                 table_metadata = bincode::deserialize(buffer.as_bytes()).unwrap_or_default();
-                println!("{:?}", table_metadata)
             }
 
             datastore.master_table = table_metadata;
-
-            println!("{:?}", datastore.master_table.keys());
 
             // cannot find in the hashmap due to the name problem with not striping the null
             // characters shit ass bithch problem
 
             // Iterate through all pages in the file.
-            println!("{}", number_of_pages);
             for page_index in 0..number_of_pages {
-                println!("in iteration");
-                // Allocate a new page in the DataStore.
                 datastore.allocate_page();
 
                 // Create a buffer to read the page data.
@@ -119,7 +113,6 @@ pub mod datastore {
 
                 // Update the master table with page references and metadata.
                 let table_name = &page_content.header.table_name;
-                println!("name -> {}", table_name);
 
                 if datastore.master_table.contains_key(table_name) {
                     datastore
@@ -134,8 +127,6 @@ pub mod datastore {
                             .unwrap()
                             .trim_end_matches('\0')
                             .to_string();
-
-                    println!("here");
                 }
             }
 
@@ -194,7 +185,7 @@ pub mod datastore {
                                 .map(|x| {
                                     x.iter()
                                         .map(|f| {
-                                            String::from_utf8_lossy(&f.data.to_vec())
+                                            String::from_utf8_lossy(&f.data[1..].to_vec())
                                                 .to_string()
                                                 .trim_end_matches('\u{000}')
                                                 .to_string()
@@ -273,7 +264,7 @@ pub mod datastore {
             }
 
             // Print and return the table as a string
-            table.printstd();
+            //table.printstd();
             table.to_string()
         }
 
@@ -362,13 +353,20 @@ pub mod datastore {
             }
         }
 
-        pub fn write(&mut self, table_name: String, data: Vec<Data>) -> Result<(), String> {
+        pub fn write(&mut self, table_name: String, data: &mut Vec<Data>) -> Result<(), String> {
             let pgd = self.master_table.get(&table_name);
 
             // the row len works only with text by counting the vec of the layout
             let layout_len = self.master_table.get(&table_name).unwrap().row_len;
 
-            let free: Vec<Data> = Vec::new();
+            if data.len() != pgd.unwrap().row_len {
+                for x in data.len()..pgd.unwrap().row_len {
+                    data.push(Data::new(
+                        crate::content_manager::data_layout::data_layout::Type::Text,
+                        &mut "-".as_bytes().to_vec(),
+                    ))
+                }
+            }
 
             if data.len() != layout_len {}
 
@@ -402,8 +400,12 @@ pub mod datastore {
                 free_spc as usize + size + data.len() as usize,
             );
 
-            self.write_into_page(page_id as usize, free_spc as usize, &serialize_data(data))
-                .map_err(|e| e.to_string())?;
+            self.write_into_page(
+                page_id as usize,
+                free_spc as usize,
+                &serialize_data(data.to_vec()),
+            )
+            .map_err(|e| e.to_string())?;
 
             Ok(())
         }
@@ -478,7 +480,7 @@ mod datastore_test {
         datastore
             .write(
                 "test".to_string(),
-                vec![
+                &mut vec![
                     content_manager::data_layout::data_layout::Data::new(
                         Type::Text,
                         &mut "bruh2".as_bytes().to_vec(),
@@ -494,7 +496,17 @@ mod datastore_test {
         datastore
             .write(
                 "test".to_string(),
-                vec![
+                &mut vec![content_manager::data_layout::data_layout::Data::new(
+                    Type::Text,
+                    &mut "bruh2".as_bytes().to_vec(),
+                )],
+            )
+            .unwrap();
+
+        datastore
+            .write(
+                "test".to_string(),
+                &mut vec![
                     Data::new(Type::Text, &mut "my nigga".as_bytes().to_vec()),
                     Data::new(Type::Text, &mut "niggapass".as_bytes().to_vec()),
                 ],
@@ -530,7 +542,7 @@ pub fn filter_data(
 
     for x in possitions {
         new_data.push(
-            String::from_utf8_lossy(&data[x].data)
+            String::from_utf8_lossy(&data[x].data[1..].to_vec())
                 .to_string()
                 .trim_matches('\u{000}')
                 .to_string(),

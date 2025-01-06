@@ -1,11 +1,7 @@
 pub mod executor;
 pub mod formater;
 
-use std::{
-    fmt,
-    ops::Index,
-    sync::Mutex,
-};
+use std::{fmt, ops::Index, sync::Mutex};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -137,8 +133,6 @@ impl Query {
             buffer.lock().unwrap().clear();
         }
 
-        //println!("{:?}", q);
-
         return Ok(q);
     }
 }
@@ -147,6 +141,8 @@ fn match_keyword(x: &str) -> TokenType {
     match x.to_uppercase().as_str() {
         "SELECT" => TokenType::Keyword(ActionType::Select),
         "INSERT" => TokenType::Keyword(ActionType::Insert),
+        "INTO" => TokenType::Navigator(),
+        "VALUES" => TokenType::Navigator(),
         "DELETE" => TokenType::Keyword(ActionType::Delete),
         "FROM" => TokenType::Navigator(),
         "WHERE" => TokenType::Condition(x.to_string()),
@@ -163,6 +159,13 @@ mod parse_test {
     #[bench]
     fn parser(b: &mut test::Bencher) {
         b.iter(|| Query::parse("SELECT * FROM test;".to_string()))
+    }
+
+    #[test]
+    fn insert() {
+
+        //println!("{:?}", Query::parse("INSERT INTO test (usarname, password) VALUES ('test', 'test2') ;".to_string()));
+
     }
 
     #[test]
