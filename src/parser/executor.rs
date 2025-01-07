@@ -15,7 +15,7 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
             for x in query.values.unwrap() {
                 dts.push(Data::new(
                     crate::content_manager::data_layout::data_layout::Type::Text,
-                    &mut x.as_bytes().to_vec(),
+                    &mut x.trim_matches([')', '(', ',']).to_string().as_bytes().to_vec(),
                 ));
             }
             let succ = datastore.write(query.table, &mut dts);
@@ -80,6 +80,7 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
                 }
             }
         }
+        super::ActionType::Create => todo!(),
         super::ActionType::None => todo!(),
     }
 }

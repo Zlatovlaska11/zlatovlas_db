@@ -1,5 +1,7 @@
 pub mod data_layout {
 
+    extern crate bincode;
+
     use core::panic;
     use std::fmt;
 
@@ -28,7 +30,7 @@ pub mod data_layout {
     // data structure serealiation
     // | 4b type | data | 1b sep |
 
-    #[derive(Debug, Tabled)]
+    #[derive(Debug, Tabled, serde::Serialize, serde::Deserialize)]
     pub struct PageHeader {
         pub page_id: usize,
         pub table_name: String,
@@ -65,7 +67,7 @@ pub mod data_layout {
         }
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct Data {
         pub tp: Type,
 
@@ -73,7 +75,7 @@ pub mod data_layout {
     }
 
 
-    #[derive(Debug)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
     pub struct PageData {
         pub header: PageHeader,
         pub data: Vec<Vec<Data>>,

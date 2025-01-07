@@ -77,5 +77,7 @@ pub async fn ws_router() {
 
     fut.await;
 
+    DATA_STORE.get().unwrap().lock().unwrap().shutdown();
+
     println!("shutting down");
 }

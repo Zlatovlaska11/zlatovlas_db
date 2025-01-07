@@ -9,7 +9,6 @@ pub mod pager {
         pub modified: bool,
     }
 
-
     pub trait PageImpl {
         fn new(id: usize) -> Self;
         fn write(&mut self, offset: usize, data: &[u8]) -> Result<(), String>;
@@ -31,7 +30,7 @@ pub mod pager {
                 return Err("not enough space".to_string());
             }
 
-            self.data[offset..offset + data.len()].copy_from_slice(data);
+            self.data[..data.len()].copy_from_slice(data);
             self.modified = true;
             Ok(())
         }

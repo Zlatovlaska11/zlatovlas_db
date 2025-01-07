@@ -43,6 +43,7 @@ pub enum ActionType {
     Insert,
     Delete,
     Select,
+    Create,
     None,
 }
 
@@ -106,6 +107,10 @@ impl Query {
             return Query::parse_insert(parts);
         }
 
+        if *parts.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Create) {
+            return Query::parse_insert(parts);
+        }
+
         for x in &parts {
             for r in x[1..].to_vec() {
                 match r {
@@ -143,6 +148,12 @@ impl Query {
         return Ok(q);
     }
 
+    //pub fn parse_create(tokens: Vec<Vec<TokenType>>) -> Result<Query, ParseError> {
+    //
+    //
+    //
+    //}
+
     pub fn parse_insert(tokens: Vec<Vec<TokenType>>) -> Result<Query, ParseError> {
         if tokens.is_empty() || tokens[0].is_empty() {
             return Err(ParseError::InvalidQuery);
@@ -162,7 +173,9 @@ impl Query {
 
         for x in &tokens[1][2..] {
             match x {
-                TokenType::Identifier(col) => cols.push(col.to_string().trim_matches(['(', ')', ',']).to_string()),
+                TokenType::Identifier(col) => {
+                    cols.push(col.to_string().trim_matches(['(', ')', ',']).to_string())
+                }
                 _ => return Err(ParseError::InvalidArguments),
             }
         }
@@ -223,7 +236,8 @@ mod parse_test {
         println!(
             "{:?}",
             Query::parse(
-                "INSERT INTO test (username, password) VALUES ('user1', 'pass1');".to_string()
+                "CREATE TABLE table_name (column1 datatype, column2 datatype, column3 datatype);"
+                    .to_string()
             )
         );
     }
