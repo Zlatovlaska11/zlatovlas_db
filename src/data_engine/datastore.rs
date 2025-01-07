@@ -381,6 +381,8 @@ pub mod datastore {
             let size: Vec<usize> = data.iter().map(|x| x.tp.size()).collect();
             let size: usize = size.iter().sum();
 
+            let mut page_dt: Option<PageData> = None;
+
             for x in pages {
                 let page_data = deserializer(self.pages.get(x).unwrap().data.to_vec(), &self);
 
@@ -389,6 +391,7 @@ pub mod datastore {
                 if PAGE_SIZE - free_space_ptr as usize >= size {
                     free_spc = free_space_ptr;
                     page_id = *x as i32;
+                    page_dt = Some(page_data);
                     break;
                 }
             }
@@ -403,7 +406,7 @@ pub mod datastore {
             self.write_into_page(
                 page_id as usize,
                 free_spc as usize,
-                &serialize_data(data.to_vec()),
+                &serialize_data(data.to_vec(), page_dt.unwrap()),
             )
             .map_err(|e| e.to_string())?;
 

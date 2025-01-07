@@ -10,6 +10,7 @@ use std::{
 };
 
 use clap::Parser;
+use content_manager::data_layout::data_layout::ColData;
 use data_engine::datastore::datastore::DataStore;
 use once_cell::sync::OnceCell;
 
@@ -46,16 +47,21 @@ fn init_args() {
 
 #[tokio::main]
 async fn main() {
+
+
+    // THE SERIALIZER NEEDS REWORK WITH THE BINCODE LIB BECAUSE IM TOO LAZY TO MAKE IT FROM SCRATCH
+
     init_args();
 
     {
-        DATA_STORE
+        println!("{}", DATA_STORE
             .get()
             .unwrap()
             .lock()
             .unwrap()
-            .table_print("test".to_string(), None);
+            .table_print("test".to_string(), None));
     }
+
 
     server::ws_server::ws_router().await;
 
