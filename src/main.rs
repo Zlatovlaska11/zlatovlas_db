@@ -47,21 +47,21 @@ fn init_args() {
 
 #[tokio::main]
 async fn main() {
-
-
     // THE SERIALIZER NEEDS REWORK WITH THE BINCODE LIB BECAUSE IM TOO LAZY TO MAKE IT FROM SCRATCH
 
     init_args();
 
     {
-        println!("{}", DATA_STORE
-            .get()
-            .unwrap()
-            .lock()
-            .unwrap()
-            .table_print("test".to_string(), None));
+        println!(
+            "{}",
+            DATA_STORE
+                .get()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .table_print("test".to_string(), None)
+        );
     }
-
 
     server::ws_server::ws_router().await;
 

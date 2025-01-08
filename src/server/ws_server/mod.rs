@@ -2,7 +2,7 @@ pub use futures::{SinkExt, StreamExt};
 use tokio::sync::mpsc::{self};
 use warp::Filter;
 
-use crate::{parser::executor::executor, DATA_STORE};
+use crate::{data_engine::datastore::datastore::DataStore, parser::executor::executor, DATA_STORE};
 
 pub async fn handle_connection(ws: warp::ws::WebSocket) {
     let (mut ws_sender, mut ws_receiver) = ws.split();
@@ -27,20 +27,12 @@ pub async fn handle_connection(ws: warp::ws::WebSocket) {
                     let text = msg.to_str().unwrap();
                     println!("recived message: {}", text);
 
-                    let parse = crate::parser::Query::parse(
+                    let message = executor(
                         msg.to_str()
                             .unwrap()
                             .to_string()
                             .trim_end_matches('\n')
                             .to_string(),
-                    );
-
-                    if parse.is_err() {
-                        tx.send(format!("{:?}", parse));
-                        continue;
-                    }
-                    let message = executor(
-                        parse.unwrap(),
                         &mut DATA_STORE.get().unwrap().lock().unwrap(),
                     );
                     if message.is_err() {

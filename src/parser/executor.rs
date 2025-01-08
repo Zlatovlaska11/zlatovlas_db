@@ -7,7 +7,8 @@ use super::{
     ParseError, Query,
 };
 
-pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Value, ParseError> {
+pub fn executor(stmt: String, datastore: &mut datastore::DataStore) -> Result<Value, ParseError> {
+    let query = Query::parse(stmt, datastore).unwrap();
     match query.action {
         super::ActionType::Insert => {
             let mut dts = vec![];
@@ -15,7 +16,11 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
             for x in query.values.unwrap() {
                 dts.push(Data::new(
                     crate::content_manager::data_layout::data_layout::Type::Text,
-                    &mut x.trim_matches([')', '(', ',']).to_string().as_bytes().to_vec(),
+                    &mut x
+                        .trim_matches([')', '(', ','])
+                        .to_string()
+                        .as_bytes()
+                        .to_vec(),
                 ));
             }
             let succ = datastore.write(query.table, &mut dts);
@@ -80,7 +85,10 @@ pub fn executor(query: Query, datastore: &mut datastore::DataStore) -> Result<Va
                 }
             }
         }
-        super::ActionType::Create => todo!(),
+        super::ActionType::Create => match Query::parse(query.query, datastore) {
+            Ok(_) => return Ok(serde_json::json!("succes")),
+            Err(err) => return Err(err),
+        },
         super::ActionType::None => todo!(),
     }
 }
