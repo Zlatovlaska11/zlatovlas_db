@@ -71,7 +71,10 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn parse(mut stmt: String, data_store: &mut DataStore) -> Result<Query, ParseError> {
+    pub fn parse(
+        mut stmt: String,
+        data_store: Option<&mut DataStore>,
+    ) -> Result<Query, ParseError> {
         let mut token_chain: Vec<TokenType> = Vec::new();
 
         for x in stmt.split(' ') {
@@ -133,7 +136,7 @@ impl Query {
                 tokens.clone(),
                 &mut stmt,
                 //&mut DATA_STORE.clone().get_mut().unwrap().lock().unwrap(),
-                data_store,
+                data_store.unwrap(),
             )?;
             return Ok(q);
         }
@@ -307,7 +310,7 @@ mod parse_test {
 
     #[bench]
     fn parser(b: &mut test::Bencher) {
-        b.iter(|| Query::parse("SELECT * FROM test;".to_string()))
+        b.iter(|| Query::parse("SELECT * FROM test;".to_string(), None))
     }
 
     #[test]
@@ -315,8 +318,9 @@ mod parse_test {
         println!(
             "{:?}",
             Query::parse(
-                "CREATE TABLE table_name (column1 String, column2 String, column3 String);"
-                    .to_string()
+                "INSERT INTO test ('username', 'password') VALUES ('test', 'test1')"
+                    .to_string(),
+                None
             )
         );
     }
@@ -324,7 +328,7 @@ mod parse_test {
     #[test]
     #[should_panic]
     fn parse() {
-        let query = Query::parse("this is some bullshit".to_string());
+        let query = Query::parse("this is some bullshit".to_string(), None);
 
         match query {
             Ok(q) => println!("{:?}", q),

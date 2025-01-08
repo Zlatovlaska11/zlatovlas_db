@@ -8,7 +8,7 @@ use super::{
 };
 
 pub fn executor(stmt: String, datastore: &mut datastore::DataStore) -> Result<Value, ParseError> {
-    let query = Query::parse(stmt, datastore).unwrap();
+    let query = Query::parse(stmt, Some(datastore)).unwrap();
     match query.action {
         super::ActionType::Insert => {
             let mut dts = vec![];
@@ -85,7 +85,7 @@ pub fn executor(stmt: String, datastore: &mut datastore::DataStore) -> Result<Va
                 }
             }
         }
-        super::ActionType::Create => match Query::parse(query.query, datastore) {
+        super::ActionType::Create => match Query::parse(query.query, Some(datastore)) {
             Ok(_) => return Ok(serde_json::json!("succes")),
             Err(err) => return Err(err),
         },
