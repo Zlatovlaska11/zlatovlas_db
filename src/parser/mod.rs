@@ -1,7 +1,19 @@
 pub mod executor;
 pub mod formater;
 
-use std::{fmt, ops::Index, sync::Mutex};
+use std::{
+    fmt,
+    ops::Index,
+    sync::{Mutex, MutexGuard},
+};
+
+use serde_json::to_string;
+
+use crate::{
+    content_manager::data_layout::data_layout::{ColData, Type},
+    data_engine::datastore::datastore::DataStore,
+    DATA_STORE,
+};
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -54,10 +66,12 @@ pub struct Query {
     pub table: String,
     pub condition: Option<(String, String, String)>,
     pub values: Option<Vec<String>>,
+
+    pub query: String,
 }
 
 impl Query {
-    pub fn parse(stmt: String) -> Result<Query, ParseError> {
+    pub fn parse(mut stmt: String, data_store: &mut DataStore) -> Result<Query, ParseError> {
         let mut token_chain: Vec<TokenType> = Vec::new();
 
         for x in stmt.split(' ') {
@@ -70,6 +84,7 @@ impl Query {
             TokenType::Keyword(ActionType::Select),
             TokenType::Keyword(ActionType::Delete),
             TokenType::Condition("WHERE".to_string()),
+            TokenType::Keyword(ActionType::Create),
         ];
 
         let mut parts: Vec<Vec<TokenType>> = Vec::new();
@@ -93,25 +108,37 @@ impl Query {
         }
 
         let mut q = Query {
-            action: ActionType::None,
+            action: ActionType::Create,
             columns: Vec::new(),
             table: String::new(),
             condition: None,
             values: None,
+            query: stmt.clone(),
         };
 
         let buffer: Mutex<Vec<String>> = Mutex::new(Vec::new());
         println!("{:?}", parts);
 
-        if *parts.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Insert) {
-            return Query::parse_insert(parts);
+        //let tokens: Vec<Vec<TokenType>> = parts.into_iter().map(|x| {
+        //    x.into_iter().filter(|x| *x != TokenType::Identifier(String::new().to_string())).collect::<Vec<TokenType>>()
+        //}).collect();
+        let tokens = parts;
+        if *tokens.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Insert) {
+            return Query::parse_insert(tokens);
         }
 
-        if *parts.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Create) {
-            return Query::parse_insert(parts);
+        if *tokens.first().unwrap().first().unwrap() == TokenType::Keyword(ActionType::Create) {
+            println!("here");
+            Query::parse_create(
+                tokens.clone(),
+                &mut stmt,
+                //&mut DATA_STORE.clone().get_mut().unwrap().lock().unwrap(),
+                data_store,
+            )?;
+            return Ok(q);
         }
 
-        for x in &parts {
+        for x in &tokens {
             for r in x[1..].to_vec() {
                 match r {
                     TokenType::Identifier(val) => buffer.lock().unwrap().push(val),
@@ -148,11 +175,61 @@ impl Query {
         return Ok(q);
     }
 
-    //pub fn parse_create(tokens: Vec<Vec<TokenType>>) -> Result<Query, ParseError> {
-    //
-    //
-    //
-    //}
+    pub fn parse_create(
+        tokens: Vec<Vec<TokenType>>,
+        raw_query: &mut String,
+        data_store: &mut DataStore,
+    ) -> Result<(), ParseError> {
+        let tail: &String = &raw_query
+            .split_off(raw_query.find('(').unwrap())
+            .replace("(", "")
+            .replace(")", "")
+            .replace(";", "")
+            .replace('\n', "");
+
+        let mut cols = vec![];
+
+        // split this bitch up to columns [col_name, type]
+        for x in tail.split(',') {
+            cols.push(x.to_string());
+        }
+
+        println!("here1");
+
+        let cols: Vec<&str> = cols.iter().map(|x| x.trim_start_matches(' ')).collect();
+
+        println!("{:?}", cols);
+
+        let cls: Vec<Vec<&str>> = cols
+            .iter()
+            .map(|x| x.split(' ').collect::<Vec<&str>>())
+            .collect();
+
+        println!("\n{:?}\n", cls);
+
+        let cols: Vec<ColData> = cls
+            .into_iter()
+            .map(|f| ColData::new(Query::match_type(f[1].to_string()), f[0].to_string()))
+            .collect();
+
+        let table_name = match &tokens[0][2] {
+            TokenType::Identifier(table_name) => table_name,
+            _ => return Err(ParseError::InvalidArguments),
+        };
+
+        data_store.create_table(table_name.to_string(), cols);
+
+        Ok(())
+    }
+
+    fn match_type(data: String) -> Type {
+        match data.to_lowercase().as_str() {
+            "string" => return Type::Text,
+            "number" => return Type::Number,
+            "float" => return Type::Float,
+            _ => return Type::None,
+        }
+    }
 
     pub fn parse_insert(tokens: Vec<Vec<TokenType>>) -> Result<Query, ParseError> {
         if tokens.is_empty() || tokens[0].is_empty() {
@@ -199,6 +276,7 @@ impl Query {
             table: table.to_string(),
             condition: None,
             values: Some(vls),
+            query: String::new(),
         };
 
         Ok(query)
@@ -216,6 +294,7 @@ fn match_keyword(x: &str) -> TokenType {
         "DELETE" => TokenType::Keyword(ActionType::Delete),
         "FROM" => TokenType::Navigator(),
         "WHERE" => TokenType::Condition(x.to_string()),
+        "CREATE" => TokenType::Keyword(ActionType::Create),
         _ => TokenType::Identifier(x.to_string()),
     }
 }
@@ -236,7 +315,7 @@ mod parse_test {
         println!(
             "{:?}",
             Query::parse(
-                "CREATE TABLE table_name (column1 datatype, column2 datatype, column3 datatype);"
+                "CREATE TABLE table_name (column1 String, column2 String, column3 String);"
                     .to_string()
             )
         );
