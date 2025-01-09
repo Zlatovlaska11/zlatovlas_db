@@ -36,7 +36,7 @@ fn init_args() {
             ))))
             .unwrap();
     } else {
-        println!("database atached");
+        println!("database attached");
         DATA_STORE
             .set(Arc::new(Mutex::new(DataStore::from_file(
                 "./database.db".to_string(),

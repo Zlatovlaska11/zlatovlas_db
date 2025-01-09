@@ -26,7 +26,7 @@ pub fn executor(stmt: String, datastore: &mut datastore::DataStore) -> Result<Va
             let succ = datastore.write(query.table, &mut dts);
 
             match succ {
-                Ok(_) => return Ok(serde_json::json!("Succes")),
+                Ok(_) => return Ok(serde_json::json!("Success")),
                 Err(_) => return Err(ParseError::InvalidQuery),
             }
         }
@@ -86,7 +86,7 @@ pub fn executor(stmt: String, datastore: &mut datastore::DataStore) -> Result<Va
             }
         }
         super::ActionType::Create => match Query::parse(query.query, Some(datastore)) {
-            Ok(_) => return Ok(serde_json::json!("succes")),
+            Ok(_) => return Ok(serde_json::json!("success")),
             Err(err) => return Err(err),
         },
         super::ActionType::None => todo!(),
